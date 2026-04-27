@@ -17,6 +17,9 @@ from transformers.utils import logging
 import re
 import jieba
 
+import os
+from dotenv import load_dotenv
+
 def hybrid_tokenizer(text):
     chinese_tokens = jieba.lcut(text)
     ascii_tokens = re.findall(r"[A-Za-z0-9_]+", text)
@@ -37,14 +40,14 @@ if len(sys.argv) != 2:
     sys.exit(1)
 
 quest_str = sys.argv[1]
-
 log("Start")
 logging.set_verbosity_error()
+load_dotenv()
 
 Settings.llm = OpenAILike(
-    api_base="http://localhost:8999/v1",
-    api_key="jane doe",
-    model="gemma-4-26B-A4B-it-UD-IQ2_M",
+    api_base=os.getenv("LLM_API_BASE"),
+    api_key=os.getenv("LLM_API_KEY"),
+    model=os.getenv("LLM_MODEL"),
     is_chat_model=True,
     # 降低随机性
     temperature=0.1,
@@ -70,7 +73,7 @@ Settings.llm = OpenAILike(
 Settings.embed_model = HuggingFaceEmbedding(
     # model_name="BAAI/bge-m3"
     # use hf cache, do not cache model duplicated.
-    model_name=r"C:\Users\Shion\.cache\huggingface\hub\models--BAAI--bge-m3\snapshots\5617a9f61b028005a4858fdac845db406aefb181"
+    model_name=os.getenv("EMBEDDING_MODEL"),
 )
 
 log("Load storage")
@@ -81,7 +84,7 @@ log("Query engine")
 reranker = FlagEmbeddingReranker(
     # model="BAAI/bge-reranker-v2-m3",
     # use hf cache, do not cache model duplicated.
-    model=r"C:\Users\Shion\.cache\huggingface\hub\models--BAAI--bge-reranker-v2-m3\snapshots\953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e",
+    model=os.getenv("RERANKER_MODEL"),
     top_n=3,
 )
 

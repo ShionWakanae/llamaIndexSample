@@ -8,7 +8,8 @@ from llama_index.core.node_parser import (
     SentenceSplitter,
 )
 from llama_index.core.schema import TextNode
-
+import os
+from dotenv import load_dotenv
 
 def log(msg):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -21,11 +22,12 @@ if len(sys.argv) != 2:
 doc_path = sys.argv[1]
 # doc_path = "D:\\Download\\temp\\DocMD\\training"
 log("Start")
+load_dotenv()
 
 Settings.llm = OpenAILike(
-    api_base="http://localhost:8999/v1",
-    api_key="jane doe",
-    model="gemma-4-26B-A4B-it-UD-IQ2_M",
+    api_base=os.getenv("LLM_API_BASE"),
+    api_key=os.getenv("LLM_API_KEY"),
+    model=os.getenv("LLM_MODEL"),
     is_chat_model=True,
 )
 
@@ -33,7 +35,7 @@ Settings.llm = OpenAILike(
 Settings.embed_model = HuggingFaceEmbedding(
     # model_name="BAAI/bge-m3",
     # use hf cache, do not cache model duplicated.
-    model_name=r"C:\Users\Shion\.cache\huggingface\hub\models--BAAI--bge-m3\snapshots\5617a9f61b028005a4858fdac845db406aefb181"
+    model_name=os.getenv("EMBEDDING_MODEL"),
 )
 
 log(f"Index: {doc_path}")
