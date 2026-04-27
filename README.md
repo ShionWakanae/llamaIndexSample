@@ -3,7 +3,7 @@
 [![Follow Me on Bilibili](https://img.shields.io/badge/关注我-bilibili-red?style=flat&logo=youtube)](https://space.bilibili.com/688222797)
 
 ## LlamaIndex
-> LlamaIndex 是一个面向大语言模型（LLM）的数据接入与检索增强（RAG）框架，核心目标是让开发者能够方便地将本地文档、数据库、API、知识库等外部数据连接到大模型，实现“基于私有数据回答问题”的能力。
+> 一个面向大语言模型（LLM）的数据接入与检索增强（RAG）框架，核心目标是让开发者能够方便地将本地文档、数据库、API、知识库等外部数据连接到大模型，实现“基于私有数据回答问题”的能力。
 >
 >它最初以“LLM 与外部数据之间的桥梁”为定位，后来逐渐发展为一个完整的 RAG 开发框架。开发者可以使用 LlamaIndex 对文档进行读取、切分（chunking）、向量化（embedding）、索引构建、检索（retrieval）、重排序（rerank），并最终将检索结果交给大语言模型生成答案。
 >
@@ -29,15 +29,17 @@
 
 ## 安装
 
-1. 安装本项目：将仓库代码克隆到一个本地目录：`git clone https://github.com/ShionWakanae/llamaIndexSample.git`，然后进入这个目录。
-2. 建立虚拟环境：`python -m venv venv`
+1. 安装本项目：将仓库代码克隆到一个本地目录：
+`git clone https://github.com/ShionWakanae/llamaIndexSample.git`
+2. 进入这个目录建立虚拟环境：`python -m venv venv`
 3. 激活虚拟环境：`.\venv\scripts\activate`
 4. 安装依赖：`pip install -r requirements.txt`
 
 ## 使用
 
-1. 索引MarkDown类型的文件：`python .\src\sample\Sample_index_with_llamaCpp.py 你的MD文件目录`
-2. 查询知识库中的内容：`python .\src\sample\Sample_RAG_from_storage.py '你的问题'`
+1. 将`.env_sample`拷贝成`.env`，并修改其中的地址，模型等配置。
+2. 运行：索引MarkDown类型的文件：`python .\src\sample\Sample_index_with_llamaCpp.py 你的MD文件目录`
+3. 运行：查询知识库中的内容：`python .\src\sample\Sample_RAG_from_storage.py '你的问题'`
 
 
 ## 授权
