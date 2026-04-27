@@ -84,6 +84,8 @@ def is_title_only(node):
         and "\n" not in text
     )
 
+candidate_nodes = []
+
 for node in markdown_nodes:
 
     if is_title_only(node):
@@ -103,18 +105,17 @@ for node in markdown_nodes:
             f"[CONTENT]\n{node.text}"
         )
 
-        final_nodes.append(
+        candidate_nodes.append(
             TextNode(
                 text=enriched_text,
                 metadata=node.metadata,
             )
         )
 
-    # 大 section -> 二次切分
+    # 大 section -> split
     else:
 
         sub_nodes = splitter.get_nodes_from_documents([node])
-
         for sub_node in sub_nodes:
 
             enriched_text = (
@@ -122,12 +123,60 @@ for node in markdown_nodes:
                 f"[CONTENT]\n{sub_node.text}"
             )
 
-            final_nodes.append(
+            candidate_nodes.append(
                 TextNode(
                     text=enriched_text,
                     metadata=sub_node.metadata,
                 )
             )
+log(f"candidate nodes:{len(candidate_nodes)}")
+
+# =========================================================
+# merge small chunks
+# =========================================================
+final_nodes = []
+i = 0
+while i < len(candidate_nodes):
+
+    current = candidate_nodes[i]
+    current_header = current.metadata.get("header_path", "")
+    current_len = len(current.text)
+
+    # 小 chunk，尝试 merge next
+    if (
+        current_len < 256
+        and i + 1 < len(candidate_nodes)
+    ):
+        nxt = candidate_nodes[i + 1]
+        next_header = nxt.metadata.get("header_path", "")
+        merged_len = current_len + len(nxt.text)
+
+        # 同 section
+        # 总长度合理
+        if (
+            current_header == next_header
+            and merged_len < 1200
+        ):
+
+            merged_text = (
+                current.text
+                + "\n\n"
+                + nxt.text
+            )
+
+            final_nodes.append(
+                TextNode(
+                    text=merged_text,
+                    metadata=current.metadata,
+                )
+            )
+
+            i += 2
+            continue
+
+    # 默认直接加入
+    final_nodes.append(current)
+    i += 1
 
 log(f"final nodes:{len(final_nodes)}")
 

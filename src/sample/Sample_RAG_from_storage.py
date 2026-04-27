@@ -1,5 +1,7 @@
 import sys
 import datetime
+from rich import print
+
 from llama_index.core import Settings
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.llms.openai_like import OpenAILike
@@ -11,14 +13,19 @@ from llama_index.core.retrievers import QueryFusionRetriever
 from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.retrievers.bm25 import BM25Retriever
 from llama_index.core.schema import TextNode
+from llama_index.core.postprocessor import SimilarityPostprocessor
 
 from transformers.utils import logging
 
 import re
-import jieba
-
 import os
 from dotenv import load_dotenv
+import warnings
+warnings.filterwarnings(
+    "ignore",
+    message="pkg_resources is deprecated as an API"
+)
+import jieba
 
 def hybrid_tokenizer(text):
     chinese_tokens = jieba.lcut(text)
@@ -54,7 +61,7 @@ Settings.llm = OpenAILike(
     repeat_penalty=1.1,
     context_window=32000,
     # 可选：减少胡说
-    max_tokens=2048,
+    max_tokens=4096,
     # system prompt
     system_prompt="""
 你是一个企业知识库问答助手。
@@ -85,13 +92,13 @@ reranker = FlagEmbeddingReranker(
     # model="BAAI/bge-reranker-v2-m3",
     # use hf cache, do not cache model duplicated.
     model=os.getenv("RERANKER_MODEL"),
-    top_n=3,
+    top_n=5,
 )
 
 log("Create retrievers")
 # Dense retriever (embedding search)
 vector_retriever = index.as_retriever(
-    similarity_top_k=10,
+    similarity_top_k=15,
 )
 
 # 从已经加载的 index 中取出所有 nodes
@@ -107,7 +114,7 @@ log(f"Loaded nodes for BM25: {len(all_nodes)}")
 # Sparse retriever (BM25 keyword search)
 bm25_retriever = BM25Retriever.from_defaults(
     nodes=all_nodes,
-    similarity_top_k=10,
+    similarity_top_k=15,
     tokenizer=hybrid_tokenizer,
     language="zh",
     # 禁止英文 stemming
@@ -120,7 +127,7 @@ retriever = QueryFusionRetriever(
         vector_retriever,
         bm25_retriever,
     ],
-    similarity_top_k=10,
+    similarity_top_k=30,
 
     # 不做 query expansion
     num_queries=1,
@@ -132,17 +139,23 @@ retriever = QueryFusionRetriever(
     use_async=False,
 )
 
+similarity_filter = SimilarityPostprocessor(
+    similarity_cutoff=0.001
+)
+
 # Query engine
 query_engine = RetrieverQueryEngine.from_args(
     retriever,
-    node_postprocessors=[reranker],
+    node_postprocessors=[
+        similarity_filter,
+        reranker,
+    ],
 )
-# query_engine = index.as_query_engine(
-#     similarity_top_k=10,
-#     node_postprocessors=[reranker],
-# )
 
-log(f"Question: {quest_str}")
+log("Question:")
+print("\n")
+print(f"[bold bright_yellow]{quest_str}[/bold bright_yellow]")
+print("\n")
 
 # log("Vector retrieval test")
 # vector_results = vector_retriever.retrieve(quest_str)
@@ -168,9 +181,8 @@ log(f"Question: {quest_str}")
 
 response = query_engine.query(quest_str)
 log("Answer:")
-
 print("\n")
-print(response.response)
+print(f"[bold bright_magenta]{response.response}[/bold bright_magenta]")
 print("\n")
 
 show_details = input("你要查看具体的命中信息吗？[y/N]: ").strip().lower()
