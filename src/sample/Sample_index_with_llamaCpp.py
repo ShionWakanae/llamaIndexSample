@@ -7,6 +7,8 @@ from llama_index.core.node_parser import (
     MarkdownNodeParser,
     SentenceSplitter,
 )
+from llama_index.core.schema import TextNode
+
 
 def log(msg):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -42,6 +44,16 @@ documents = SimpleDirectoryReader(
     filename_as_id=True,
 ).load_data()
 
+for doc in documents:
+    text = doc.get_content()
+
+    cleaned = (
+        text.replace("\r\n", "\n")
+            .replace("\r", "\n")
+    )
+
+    doc.text_resource.text = cleaned
+
 # index = VectorStoreIndex.from_documents(
 #     documents,
 # )
@@ -51,10 +63,7 @@ markdown_parser = MarkdownNodeParser(
     include_prev_next_rel=True,
 )
 
-markdown_nodes = markdown_parser.get_nodes_from_documents(
-    documents
-)
-
+markdown_nodes = markdown_parser.get_nodes_from_documents(documents)
 log(f"markdown nodes:{len(markdown_nodes)}")
 
 # 第二步：按长度二次切分
@@ -63,14 +72,73 @@ splitter = SentenceSplitter(
     chunk_overlap=80,
 )
 
-nodes = splitter.get_nodes_from_documents(
-    markdown_nodes
-)
+final_nodes = []
 
-log(f"final nodes:{len(nodes)}")
+def is_title_only(node):
+    text = node.text.strip()
+
+    return (
+        text.startswith("#")
+        and "\n" not in text
+    )
+
+for node in markdown_nodes:
+
+    if is_title_only(node):
+        continue
+
+    header = (
+        node.metadata.get("header_path", "")
+        .strip("/")
+        .replace("/", " > ")
+    )
+
+    # 小 section
+    if len(node.text) < 1200:
+
+        enriched_text = (
+            f"[SECTION]\n{header}\n\n"
+            f"[CONTENT]\n{node.text}"
+        )
+
+        final_nodes.append(
+            TextNode(
+                text=enriched_text,
+                metadata=node.metadata,
+            )
+        )
+
+    # 大 section -> 二次切分
+    else:
+
+        sub_nodes = splitter.get_nodes_from_documents([node])
+
+        for sub_node in sub_nodes:
+
+            enriched_text = (
+                f"[SECTION]\n{header}\n\n"
+                f"[CONTENT]\n{sub_node.text}"
+            )
+
+            final_nodes.append(
+                TextNode(
+                    text=enriched_text,
+                    metadata=sub_node.metadata,
+                )
+            )
+
+log(f"final nodes:{len(final_nodes)}")
+
+# if len(final_nodes)>=10:
+#     log("Print first 5 markdown node metadata")
+#     for i, node in enumerate(final_nodes[:10]):
+#         print(f"({i+1})","=" * 80)
+#         print("[header_path]",node.metadata.get("header_path"))
+#         print("[node_text]",node.text[:200])
+# exit(1)
 
 # 建索引
-index = VectorStoreIndex(nodes)
+index = VectorStoreIndex(final_nodes)
 
 log("Persist")
 index.storage_context.persist()
