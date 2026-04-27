@@ -1,0 +1,7 @@
+transformers==4.46.3
+sentence-transformers==3.3.1
+FlagEmbedding==1.4.0
+llama-index
+llama-index-llms-openai-like
+llama-index-embeddings-huggingface
+llama-index-postprocessor-flag-embedding-reranker
