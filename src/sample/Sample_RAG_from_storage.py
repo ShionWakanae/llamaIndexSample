@@ -123,7 +123,8 @@ retriever = QueryFusionRetriever(
     num_queries=1,
 
     # RRF 融合
-    mode="simple",
+    # mode="simple",
+    mode="reciprocal_rerank",
 
     use_async=False,
 )
