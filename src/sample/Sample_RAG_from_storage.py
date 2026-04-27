@@ -29,10 +29,10 @@ Settings.llm = OpenAILike(
     is_chat_model=True,
     # 降低随机性
     temperature=0.1,
-
+    repeat_penalty=1.1,
+    context_window=32000,
     # 可选：减少胡说
     max_tokens=2048,
-
     # system prompt
     system_prompt="""
 你是一个企业知识库问答助手。
@@ -74,6 +74,7 @@ log(f"Question: {quest_str}")
 response = query_engine.query(quest_str)
 log("Answer:")
 
+print("\n")
 print(response.response)
 print("\n")
 
@@ -82,8 +83,8 @@ if  show_details.lower() in ("y", "yes"):
     log("命中的内容:")
     print(">>>----------------------------------------------------------------------------<<<")
     for node in response.source_nodes:
-        print("score:", node.score)
-        print(node.text[:500])
+        print(">>>score:", node.score)
+        print(node.text[:512])
         print(">>>----------------------------------------------------------------------------<<<")
 
 log("All done!")

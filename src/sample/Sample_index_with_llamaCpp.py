@@ -84,11 +84,6 @@ log(f"Question: {quest_str}")
 response = query_engine.query(quest_str)
 log("answer:")
 
+print("\n")
 print(response.response)
-
-log("\n命中的内容:")
-
-for node in response.source_nodes:
-    print("score:", node.score)
-    print(node.text[:500])
-    print("------")
+print("\n")
