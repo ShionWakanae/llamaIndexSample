@@ -26,10 +26,12 @@
 1. 目录结构分块后太小的块，通过后续块的大小以及是否属于同一标题，可进行合并。
 1. 对于分块增加元数据，对分块文本进行标题注入。
 1. 处理中文分词，修复回车换行。
+2. 使用CUDA加速进行向量化（Embedding）。 
    
 ### （2）查询检索
 1. 使用LLM语义和BM25关键词的混合检索。
 1. 对召回内容进行重排序。
+1. 给没有耐心的人准备了spinner和流式输出。
 
 ## 安装
 1. 将仓库代码克隆到一个本地目录：
@@ -42,17 +44,28 @@
 > [!Important]
 > 为了专注于索引和召回（包括调试），暂时先不支持其它格式的文档。
 > 在进行之前，请先把文档处理成为markdown格式`.md`。可以使用微软的 [mark it down](https://github.com/microsoft/markitdown) 或者 [pymupdf4llm](https://github.com/pymupdf/PyMuPDF4LLM) 等等……
+>
+> 对于markitdown的用法可以参考我的 [MarkItDownSample.py](./src/ref/MarkItDownSample.py) 的写法。
+> 
+> 当然这个参考文件是无法在此项目环境中运行的，你需要参考 [mark it down](https://github.com/microsoft/markitdown) 的官方说明，建立一个它的运行环境。
+> 
+> 样例文件最主要的作用是对Word中图片的处理，比如示意图，流程图，架构图，会被转换成相应的文字描述。但可惜的是，单提示词对多种图片的处理效果并不好，最好是能有个区分流程，多Agent处理多种类型图片。这是另外的主题了，而且坑也不少。总之这只是个样例。
+> 
+> 样例文件把`.docx`转为`.md`的命令是： 
+```console
+Python .\MarkItDownSample.py "D:\test.docx" "d:\test_my.md"
+```
 
 ### （1）配置LLM和模型
 
 将`.env_sample`拷贝成`.env`，并修改其中的API地址密钥，各种模型配置（本地或在线），配置样例如下：
-```
-LLM_API_BASE=https://api.openai.com/v1
-LLM_API_KEY=sk-xxxxx
-LLM_MODEL=gpt-4.1-mini
+``` ini
+LLM_API_BASE=https://api.openai.com/v1      #本地或在线的OpenAI或兼容API地址
+LLM_API_KEY=sk-xxxxx                        #密钥
+LLM_MODEL=gpt-4.1-mini                      #模型名称
 
-EMBEDDING_MODEL=BAAI/bge-m3
-RERANKER_MODEL=BAAI/bge-reranker-v2-m3
+EMBEDDING_MODEL=BAAI/bge-m3                 #可以不修改，自动从hf上下载。
+RERANKER_MODEL=BAAI/bge-reranker-v2-m3      #可以不修改，自动从hf上下载。
 ```
 
 ### （2）建立知识库
@@ -61,13 +74,13 @@ RERANKER_MODEL=BAAI/bge-reranker-v2-m3
 如果是N卡建议使用CUDA，否则请注释掉`device="cuda",`语句。
 
 使用CUDA的方式（注意自己的显卡，和对应安装CUDA的版本）：
-```bash
+```console
 pip uninstall torch torchvision torchaudio
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
 ```
 
 速度对比：
-```bash
+```console
 i9-12900F：Generating embeddings: 100%|████████████████████████| 582/582 [06:45<00:00, 1.43it/s]
 4060TI16G：Generating embeddings: 100%|████████████████████████| 582/582 [00:30<00:00, 19.26it/s]
 ```
