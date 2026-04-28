@@ -20,14 +20,14 @@
 > 在当前的 AI 应用开发中，LlamaIndex 常被用于企业知识库问答、文档搜索、客服机器人、代码知识检索、多文档分析，以及本地离线 RAG 系统等场景。
 
 ## 项目功能
-### 建立知识库
+### （1）建立知识库
 1. 对Markdown文件进行基于目录结构的分块（chunking）。
 1. 目录结构分块后依然较大的块，进行普通的固定大小分块。
 1. 目录结构分块后太小的块，通过后续块的大小以及是否属于同一标题，可进行合并。
 1. 对于分块增加元数据，对分块文本进行标题注入。
 1. 处理中文分词，修复回车换行。
    
-### 查询检索
+### （2）查询检索
 1. 使用LLM语义和BM25关键词的混合检索。
 1. 对召回内容进行重排序。
 
@@ -43,7 +43,9 @@
 > 为了专注于索引和召回（包括调试），暂时先不支持其它格式的文档。
 > 在进行之前，请先把文档处理成为markdown格式`.md`。可以使用微软的 [mark it down](https://github.com/microsoft/markitdown) 或者 [pymupdf4llm](https://github.com/pymupdf/PyMuPDF4LLM) 等等……
 
-1. 将`.env_sample`拷贝成`.env`，并修改其中的API地址密钥，各种模型配置（本地或在线），配置样例如下：
+### （1）配置LLM和模型
+
+将`.env_sample`拷贝成`.env`，并修改其中的API地址密钥，各种模型配置（本地或在线），配置样例如下：
 ```
 LLM_API_BASE=https://api.openai.com/v1
 LLM_API_KEY=sk-xxxxx
@@ -52,9 +54,26 @@ LLM_MODEL=gpt-4.1-mini
 EMBEDDING_MODEL=BAAI/bge-m3
 RERANKER_MODEL=BAAI/bge-reranker-v2-m3
 ```
-2. 索引MarkDown类型的文件：`python .\src\sample\Sample_index_with_llamaCpp.py 你的MD文件目录`
-   
-3. 查询知识库中的内容：`python .\src\sample\Sample_RAG_from_storage.py '你的问题'`
+
+### （2）建立知识库
+索引`.md`类型的文件：`python .\src\sample\Sample_index_with_llamaCpp.py 你的MD文件目录`
+
+如果是N卡建议使用CUDA，否则请注释掉`device="cuda",`语句。
+
+使用CUDA的方式（注意自己的显卡，和对应安装CUDA的版本）：
+```bash
+pip uninstall torch torchvision torchaudio
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+```
+
+速度对比：
+```bash
+i9-12900F：Generating embeddings: 100%|████████████████████████| 582/582 [06:45<00:00, 1.43it/s]
+4060TI16G：Generating embeddings: 100%|████████████████████████| 582/582 [00:30<00:00, 19.26it/s]
+```
+
+### （3）查询知识库
+查询知识库中的内容：`python .\src\sample\Sample_RAG_from_storage.py '你的问题'`
 
 ## 演示
 点击打开B站视频：

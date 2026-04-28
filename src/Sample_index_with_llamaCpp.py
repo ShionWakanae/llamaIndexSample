@@ -66,6 +66,8 @@ Settings.llm = OpenAILike(
 # set the embed model
 Settings.embed_model = HuggingFaceEmbedding(
     model_name=os.getenv("EMBEDDING_MODEL"),
+    device="cuda",
+    embed_batch_size=32,
 )
 
 log(f"Index: {doc_path}")
