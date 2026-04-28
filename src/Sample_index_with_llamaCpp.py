@@ -1,13 +1,9 @@
-import sys
 import datetime
 from rich import print
 from llama_index.core import Settings, VectorStoreIndex, SimpleDirectoryReader
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.llms.openai_like import OpenAILike
-from llama_index.core.node_parser import (
-    MarkdownNodeParser,
-    SentenceSplitter,
-)
+from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core.schema import TextNode
 import os
 from dotenv import load_dotenv
@@ -15,6 +11,7 @@ import argparse
 import yaml
 import re
 from collections import Counter, defaultdict
+from parser.MarkdownHeadingAwareParser import MarkdownHeadingAwareParser
 
 def log(msg):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -217,16 +214,21 @@ if __name__ == "__main__":
         doc.text_resource.text = cleaned
 
     # 第一步：按 markdown 层级切
-    markdown_parser = MarkdownNodeParser(
+    markdown_parser = MarkdownHeadingAwareParser(
         include_metadata=True,
         include_prev_next_rel=True,
     )
 
     markdown_nodes = markdown_parser.get_nodes_from_documents(
         documents = documents,
-        show_progress = True,
         )
     log(f"markdown nodes:{len(markdown_nodes)}")
+
+    # for i, node in enumerate(markdown_nodes):
+    #     print(f"({i})","=" * 80)
+    #     print("[meta_data]",node.metadata)
+    #     print("[node_text]",node.text)
+    # exit(1)
 
     # 第二步：按长度二次切分
     splitter = SentenceSplitter(
