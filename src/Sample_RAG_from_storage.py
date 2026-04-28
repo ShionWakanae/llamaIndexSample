@@ -179,11 +179,11 @@ print()
 
 log("Answer:")
 print()
-first = True
 spinner = AsyncSpinner()
 with Live(Text("....", style="yellow"), refresh_per_second=2) as live:
     spinner.live = live
     spinner.start()    
+    first = True
     response = query_engine.query(quest_str)
     for chunk in response.response_gen:
         if chunk :
@@ -194,10 +194,10 @@ with Live(Text("....", style="yellow"), refresh_per_second=2) as live:
                 first = False
             print(f"[bold bright_magenta]{chunk}[/]", end="", flush=True)
 
-if first:
-    spinner.stop()
-    live.stop()
-    print(f"[bold bright_magenta]{response.response}[/]")
+    if first:
+        spinner.stop()
+        live.stop()
+        print(f"[bold bright_magenta]对不起，我检索了资料，但还是不知道答案……[/]")
     
 print()
 print()
