@@ -56,6 +56,8 @@ RERANKER_MODEL=BAAI/bge-reranker-v2-m3
    
 3. 查询知识库中的内容：`python .\src\sample\Sample_RAG_from_storage.py '你的问题'`
 
+## 演示
+https://www.bilibili.com/video/BV1rb9zB5EAD/
 
 ## 授权
 ![license](https://img.shields.io/github/license/ShionWakanae/llamaIndexSample.svg "MIT license")
