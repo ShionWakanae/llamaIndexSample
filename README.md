@@ -83,11 +83,10 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 ```
 
 速度对比：
-
-> i9-12900F：Generating embeddings: 100%|█████████████████████| 582/582 [06:45<00:00, 1.43it/s]
-> 
-> 4060TI16G：Generating embeddings: 100%|█████████████████████| 582/582 [00:30<00:00, 19.26it/s]
-
+```yml
+i9-12900F * Generating embeddings: 100%|█████████████████████| 582/582 [06:45<00:00, 1.43it/s] 
+4060TI16G * Generating embeddings: 100%|█████████████████████| 582/582 [00:30<00:00, 19.26it/s]
+```
 
 ### （3）查询知识库
 查询知识库中的内容：
