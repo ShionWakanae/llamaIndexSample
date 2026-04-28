@@ -41,11 +41,20 @@
 ## 使用
 > [!Important]
 > 为了专注于索引和召回（包括调试），暂时先不支持其它格式的文档。
-> 在进行之前，请先把文档处理成为markdown格式`.md`。可用工具比如微软的`mark it down`或者`pymupdf4llm`等等……
+> 在进行之前，请先把文档处理成为markdown格式`.md`。可以使用微软的 [mark it down](https://github.com/microsoft/markitdown) 或者 [pymupdf4llm](https://github.com/pymupdf/PyMuPDF4LLM) 等等……
 
-1. 将`.env_sample`拷贝成`.env`，并修改其中的API地址密钥，各种模型配置（本地或在线）。
-2. 运行：索引MarkDown类型的文件：`python .\src\sample\Sample_index_with_llamaCpp.py 你的MD文件目录`
-3. 运行：查询知识库中的内容：`python .\src\sample\Sample_RAG_from_storage.py '你的问题'`
+1. 将`.env_sample`拷贝成`.env`，并修改其中的API地址密钥，各种模型配置（本地或在线），配置样例如下：
+```
+LLM_API_BASE=https://api.openai.com/v1
+LLM_API_KEY=sk-xxxxx
+LLM_MODEL=gpt-4.1-mini
+
+EMBEDDING_MODEL=BAAI/bge-m3
+RERANKER_MODEL=BAAI/bge-reranker-v2-m3
+```
+2. 索引MarkDown类型的文件：`python .\src\sample\Sample_index_with_llamaCpp.py 你的MD文件目录`
+   
+3. 查询知识库中的内容：`python .\src\sample\Sample_RAG_from_storage.py '你的问题'`
 
 
 ## 授权
