@@ -1,6 +1,9 @@
 import sys
+import time
 import datetime
 from rich import print
+from rich.text import Text
+from rich.live import Live
 
 from llama_index.core import Settings
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
@@ -26,6 +29,7 @@ warnings.filterwarnings(
     message="pkg_resources is deprecated as an API"
 )
 import jieba
+from utils.AsyncSpinner import AsyncSpinner
 
 def hybrid_tokenizer(text):
     chinese_tokens = jieba.lcut(text)
@@ -47,7 +51,7 @@ if len(sys.argv) != 2:
     sys.exit(1)
 
 quest_str = sys.argv[1]
-log("Start")
+log("Starting...")
 logging.set_verbosity_error()
 load_dotenv()
 
@@ -76,40 +80,26 @@ Settings.llm = OpenAILike(
 """,
 )
 
-# set the embed model
 Settings.embed_model = HuggingFaceEmbedding(
-    # model_name="BAAI/bge-m3"
-    # use hf cache, do not cache model duplicated.
     model_name=os.getenv("EMBEDDING_MODEL"),
 )
 
-log("Load storage")
+log("Loading storage...")
 storage_context = StorageContext.from_defaults(persist_dir="./storage")
 index = load_index_from_storage(storage_context)
-
-log("Query engine")
-reranker = FlagEmbeddingReranker(
-    # model="BAAI/bge-reranker-v2-m3",
-    # use hf cache, do not cache model duplicated.
-    model=os.getenv("RERANKER_MODEL"),
-    top_n=5,
-)
-
-log("Create retrievers")
-# Dense retriever (embedding search)
-vector_retriever = index.as_retriever(
-    similarity_top_k=15,
-)
-
-# 从已经加载的 index 中取出所有 nodes
 docstore = index.storage_context.docstore
-
 all_nodes = [
     n for n in docstore.docs.values()
     if isinstance(n, TextNode)
 ]
-
 log(f"Loaded nodes for BM25: {len(all_nodes)}")
+
+
+log("Creating retrievers...")
+# Dense retriever (embedding search)
+vector_retriever = index.as_retriever(
+    similarity_top_k=15,
+)
 
 # Sparse retriever (BM25 keyword search)
 bm25_retriever = BM25Retriever.from_defaults(
@@ -143,7 +133,12 @@ similarity_filter = SimilarityPostprocessor(
     similarity_cutoff=0.001
 )
 
-# Query engine
+reranker = FlagEmbeddingReranker(
+    model=os.getenv("RERANKER_MODEL"),
+    top_n=5,
+)
+
+log("Creating query engine...")
 query_engine = RetrieverQueryEngine.from_args(
     retriever,
     node_postprocessors=[
@@ -154,7 +149,8 @@ query_engine = RetrieverQueryEngine.from_args(
 
 log("Question:")
 print("\n")
-print(f"[bold bright_yellow]{quest_str}[/bold bright_yellow]")
+q_obj = Text(quest_str, style="bold bright_yellow")
+print(q_obj)
 print("\n")
 
 # log("Vector retrieval test")
@@ -179,12 +175,32 @@ print("\n")
 #     print(node.text[:300])
 
 
-response = query_engine.query(quest_str)
 log("Answer:")
 print("\n")
-print(f"[bold bright_magenta]{response.response}[/bold bright_magenta]")
+spinner = AsyncSpinner()
+with Live(Text("...Working", style="yellow"), refresh_per_second=2) as live:
+    spinner.live = live
+    spinner.start()    
+    response = query_engine.query(quest_str)
+    spinner.stop()
+
+print(f"[bold bright_magenta]{response.response}[/]")
 print("\n")
 
+print("Reference:")
+print("\n")
+all_files = []
+j = 0
+for i, node in enumerate(response.source_nodes):
+    # print(node.metadata)
+    file_name = node.metadata.get("file_name")
+    if file_name and (file_name not in all_files):
+        all_files.append(file_name)
+        j = j + 1
+        print(f"({j}) [bright_blue]{file_name}[/]")
+print("\n")
+
+log("End of answer")
 show_details = input("你要查看具体的命中信息吗？[y/N]: ").strip().lower()
 if  show_details.lower() in ("y", "yes"):
     log("命中的内容:")
@@ -194,4 +210,4 @@ if  show_details.lower() in ("y", "yes"):
         print(node.text[:512])
         print(">>>----------------------------------------------------------------------------<<<")
 
-log("All done!")
+log("All done ✅")
