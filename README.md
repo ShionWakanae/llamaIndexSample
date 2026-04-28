@@ -4,8 +4,8 @@
 
 
 ## 这是在干啥
-我正在尝试通过开发基于LlamaIndex的程序，理解企业知识库和RAG的知识。
-
+我正在尝试通过开发基于LlamaIndex的程序，从0理解企业知识库和RAG的知识……
+![](res/cat_typing.gif)
 
 ## 什么是LlamaIndex
 > [!Note]
