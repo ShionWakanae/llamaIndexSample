@@ -77,7 +77,7 @@ python .\src\sample\Sample_index_with_llamaCpp.py '你的MD文件目录'
 如果是N卡建议使用CUDA，否则请注释掉`device="cuda",`语句。
 
 使用CUDA的方式（注意自己的显卡，和对应安装CUDA的版本）：
-```console
+``` shell
 pip uninstall torch torchvision torchaudio
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
 ```
