@@ -1,5 +1,6 @@
 import sys
 import datetime
+from rich import print
 from llama_index.core import Settings, VectorStoreIndex, SimpleDirectoryReader
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.llms.openai_like import OpenAILike
@@ -15,12 +16,43 @@ def log(msg):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{timestamp}] {msg}")
 
+def Show_debug_info_and_exit(final_nodes:list):
+    node_max = -1
+    node_min = -1
+    node_max_index = -1
+    node_min_index = -1
+
+    if len(final_nodes)>=10:
+        log("Print first max and min markdown node metadata")
+        for i, node in enumerate(final_nodes):
+            # print(f"({i})","=" * 80)
+            # print("[header_path]",node.metadata.get("header_path"))
+            # print("[node_text]",node.text[:200])
+
+            if (node_min == -1) or len(node.text) < node_min:
+                node_min = len(node.text)
+                node_min_index = i
+
+            if (node_max == -1) or len(node.text) > node_max:
+                node_max = len(node.text)
+                node_max_index = i
+
+        print(f"Node max length:{node_max}, and min length:{node_min}")
+        print(f"({node_min_index})","=" * 80)
+        print("[header_path]",final_nodes[node_min_index].metadata.get("header_path"))
+        print("[node_text]",final_nodes[node_min_index].text)
+        print(f"({node_max_index})","=" * 80)
+        print("[header_path]",final_nodes[node_max_index].metadata.get("header_path"))
+        print("[node_text]",final_nodes[node_max_index].text[:500])
+        
+    exit(1)
+
+
 if len(sys.argv) != 2:
     print("Usage: python Sample_index_with_llamaCpp.py A_Doc_Path")
     sys.exit(1)
 
 doc_path = sys.argv[1]
-# doc_path = "D:\\Download\\temp\\DocMD\\training"
 log("Start")
 load_dotenv()
 
@@ -33,8 +65,6 @@ Settings.llm = OpenAILike(
 
 # set the embed model
 Settings.embed_model = HuggingFaceEmbedding(
-    # model_name="BAAI/bge-m3",
-    # use hf cache, do not cache model duplicated.
     model_name=os.getenv("EMBEDDING_MODEL"),
 )
 
@@ -52,13 +82,11 @@ for doc in documents:
     cleaned = (
         text.replace("\r\n", "\n")
             .replace("\r", "\n")
+            .replace(r"\_", "_")
     )
 
     doc.text_resource.text = cleaned
 
-# index = VectorStoreIndex.from_documents(
-#     documents,
-# )
 # 第一步：按 markdown 层级切
 markdown_parser = MarkdownNodeParser(
     include_metadata=True,
@@ -180,25 +208,25 @@ while i < len(candidate_nodes):
 
 log(f"final nodes:{len(final_nodes)}")
 
-# if len(final_nodes)>=10:
-#     log("Print first 5 markdown node metadata")
-#     for i, node in enumerate(final_nodes[:10]):
-#         print(f"({i+1})","=" * 80)
-#         print("[header_path]",node.metadata.get("header_path"))
-#         print("[node_text]",node.text[:200])
-# exit(1)
+####################
+# debug part
+# Show_debug_info_and_exit(final_nodes)
+
 
 # 建索引
-index = VectorStoreIndex(final_nodes)
-
+log("Index")
+index = VectorStoreIndex(
+    nodes=final_nodes,
+    show_progress=True,
+    )
 log("Persist")
 index.storage_context.persist()
 log("Query engine")
 query_engine = index.as_query_engine(
-    similarity_top_k=1
+    similarity_top_k=3
 )
 
-quest_str = "这些文档主要是啥内容？"
+quest_str = "文档主要是啥内容？"
 log(f"Question: {quest_str}")
 response = query_engine.query(quest_str)
 log("answer:")
