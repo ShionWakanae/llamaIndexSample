@@ -60,6 +60,7 @@ Settings.llm = OpenAILike(
     api_key=os.getenv("LLM_API_KEY"),
     model=os.getenv("LLM_MODEL"),
     is_chat_model=True,
+    streaming=True,
     # 降低随机性
     temperature=0.1,
     repeat_penalty=1.1,
@@ -145,13 +146,14 @@ query_engine = RetrieverQueryEngine.from_args(
         similarity_filter,
         reranker,
     ],
+    streaming=True,
 )
 
 log("Question:")
-print("\n")
+print()
 q_obj = Text(quest_str, style="bold bright_yellow")
 print(q_obj)
-print("\n")
+print()
 
 # log("Vector retrieval test")
 # vector_results = vector_retriever.retrieve(quest_str)
@@ -176,19 +178,31 @@ print("\n")
 
 
 log("Answer:")
-print("\n")
+print()
+first = True
 spinner = AsyncSpinner()
-with Live(Text("...Working", style="yellow"), refresh_per_second=2) as live:
+with Live(Text("....", style="yellow"), refresh_per_second=2) as live:
     spinner.live = live
     spinner.start()    
     response = query_engine.query(quest_str)
+    for chunk in response.response_gen:
+        if chunk :
+            if first:
+                spinner.stop()
+                live.stop()
+                # print()
+                first = False
+            print(f"[bold bright_magenta]{chunk}[/]", end="", flush=True)
+
+if first:
     spinner.stop()
 
-print(f"[bold bright_magenta]{response.response}[/]")
-print("\n")
-
+# print(f"[bold bright_magenta]{response.response}[/]")
+    
+print()
+print()
 print("Reference:")
-print("\n")
+print()
 all_files = []
 j = 0
 for i, node in enumerate(response.source_nodes):
@@ -198,7 +212,7 @@ for i, node in enumerate(response.source_nodes):
         all_files.append(file_name)
         j = j + 1
         print(f"({j}) [bright_blue]{file_name}[/]")
-print("\n")
+print()
 
 log("End of answer")
 show_details = input("你要查看具体的命中信息吗？[y/N]: ").strip().lower()
