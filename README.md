@@ -45,14 +45,14 @@
 > 为了专注于索引和召回（包括调试），暂时先不支持其它格式的文档。
 > 在进行之前，请先把文档处理成为markdown格式`.md`。可以使用微软的 [mark it down](https://github.com/microsoft/markitdown) 或者 [pymupdf4llm](https://github.com/pymupdf/PyMuPDF4LLM) 等等……
 >
-> 对于markitdown的用法可以参考我的 [MarkItDownSample.py](./src/ref/MarkItDownSample.py) 的写法。
+> 对于markitdown的用法可以参考我的 [`MarkItDownSample.py`](./src/ref/MarkItDownSample.py) 的写法。
 > 
 > 当然这个参考文件是无法在此项目环境中运行的，你需要参考 [mark it down](https://github.com/microsoft/markitdown) 的官方说明，建立一个它的运行环境。
 > 
 > 样例文件最主要的作用是对Word中图片的处理，比如示意图，流程图，架构图，会被转换成相应的文字描述。但可惜的是，单提示词对多种图片的处理效果并不好，最好是能有个区分流程，多Agent处理多种类型图片。这是另外的主题了，而且坑也不少。总之这只是个样例。
 > 
 > 样例文件把`.docx`转为`.md`的命令是： 
-```console
+``` shell
 Python .\MarkItDownSample.py "D:\test.docx" "d:\test_my.md"
 ```
 
