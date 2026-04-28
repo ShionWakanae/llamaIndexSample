@@ -196,8 +196,8 @@ with Live(Text("....", style="yellow"), refresh_per_second=2) as live:
 
 if first:
     spinner.stop()
-
-# print(f"[bold bright_magenta]{response.response}[/]")
+    live.stop()
+    print(f"[bold bright_magenta]{response.response}[/]")
     
 print()
 print()
