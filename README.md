@@ -2,7 +2,13 @@
 [![Follow me on CSDN](https://img.shields.io/badge/若苗瞬-CSDN-blue)](https://blog.csdn.net/ddrfan?type=blog)
 [![Follow Me on Bilibili](https://img.shields.io/badge/关注我-bilibili-red?style=flat&logo=youtube)](https://space.bilibili.com/688222797)
 
-## LlamaIndex
+
+## 这是在干啥
+我正在尝试通过开发基于LlamaIndex的程序，理解企业知识库和RAG的知识。
+
+
+## 什么是LlamaIndex
+> [!Note]
 > 一个面向大语言模型（LLM）的数据接入与检索增强（RAG）框架，核心目标是让开发者能够方便地将本地文档、数据库、API、知识库等外部数据连接到大模型，实现“基于私有数据回答问题”的能力。
 >
 >它最初以“LLM 与外部数据之间的桥梁”为定位，后来逐渐发展为一个完整的 RAG 开发框架。开发者可以使用 LlamaIndex 对文档进行读取、切分（chunking）、向量化（embedding）、索引构建、检索（retrieval）、重排序（rerank），并最终将检索结果交给大语言模型生成答案。
@@ -13,10 +19,7 @@
 >
 > 在当前的 AI 应用开发中，LlamaIndex 常被用于企业知识库问答、文档搜索、客服机器人、代码知识检索、多文档分析，以及本地离线 RAG 系统等场景。
 
-
-## 这是在干啥
-我正在尝试通过开发基于LlamaIndex的程序，理解企业知识库和RAG的知识。
-
+## 项目功能
 ### 建立知识库
 1. 对Markdown文件进行基于目录结构的分块（chunking）。
 1. 目录结构分块后依然较大的块，进行普通的固定大小分块。
@@ -29,7 +32,6 @@
 2. 对召回内容进行重排序。
 
 ## 安装
-
 1. 安装本项目：将仓库代码克隆到一个本地目录：
 `git clone https://github.com/ShionWakanae/llamaIndexSample.git`
 2. 进入这个目录建立虚拟环境：`python -m venv venv`
@@ -37,12 +39,16 @@
 4. 安装依赖：`pip install -r requirements.txt`
 
 ## 使用
+> [!Important]
+> 为了专注于索引和召回（包括调试），暂时先不支持其它格式的文档。
+> 在进行之前，请先把文档处理成为markdown格式`.md`。可用工具比如微软的`mark it down`或者`pymupdf4llm`等等……
 
-1. 将`.env_sample`拷贝成`.env`，并修改其中的地址，模型等配置。
+1. 将`.env_sample`拷贝成`.env`，并修改其中的API地址密钥，各种模型配置（本地或在线）。
 2. 运行：索引MarkDown类型的文件：`python .\src\sample\Sample_index_with_llamaCpp.py 你的MD文件目录`
 3. 运行：查询知识库中的内容：`python .\src\sample\Sample_RAG_from_storage.py '你的问题'`
 
 
 ## 授权
+![license](https://img.shields.io/github/license/ShionWakanae/llamaIndexSample.svg "MIT license")
 
 本项目采用MIT许可证开源。
