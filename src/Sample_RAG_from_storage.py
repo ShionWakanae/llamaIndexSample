@@ -220,6 +220,7 @@ if  show_details.lower() in ("y", "yes"):
     log("命中的内容:")
     print(">>>----------------------------------------------------------------------------<<<")
     for node in response.source_nodes:
+        print(">>>metadata:",node.metadata)
         print(">>>score:", node.score)
         print(node.text[:512])
         print(">>>----------------------------------------------------------------------------<<<")

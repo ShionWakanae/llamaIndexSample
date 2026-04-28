@@ -12,16 +12,76 @@ from llama_index.core.schema import TextNode
 import os
 from dotenv import load_dotenv
 import argparse
+import yaml
+import re
+from collections import Counter, defaultdict
 
 def log(msg):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{timestamp}] {msg}")
+
+def print_metadata_stats(final_nodes):
+
+    stats = defaultdict(Counter)
+    total_nodes = len(final_nodes)
+    for node in final_nodes:
+        meta = node.metadata
+
+        #
+        # topic
+        #
+        if "topic" in meta:
+            stats["topic"][meta["topic"]] += 1
+
+        #
+        # chunk_type
+        #
+        if "chunk_type" in meta:
+            stats["chunk_type"][meta["chunk_type"]] += 1
+
+        #
+        # boolean metadata
+        #
+        for key in [
+            "has_error_code",
+            "has_sql",
+            "has_api",
+            "has_number",
+        ]:
+
+            if meta.get(key) is True:
+                stats[key]["true"] += 1
+
+    print()
+    print("=" * 60)
+    print(f"TOTAL NODES: {total_nodes}")
+    print("=" * 60)
+
+    for category, counter in stats.items():
+
+        print()
+        print(f"***{category}***")
+
+        total_matched = sum(counter.values())
+
+        print(f"matched nodes: {total_matched}")
+
+        for k, v in counter.most_common():
+
+            percent = (v / total_nodes) * 100
+
+            print(
+                f"  {k}: {v} "
+                f"({percent:.1f}%)"
+            )
 
 def Show_debug_info_and_exit(final_nodes:list):
     node_max = -1
     node_min = -1
     node_max_index = -1
     node_min_index = -1
+
+    print_metadata_stats(final_nodes)
 
     if len(final_nodes)>=10:
         log("Print first max and min markdown node metadata")
@@ -49,40 +109,64 @@ def Show_debug_info_and_exit(final_nodes:list):
         
     exit(1)
 
-def enrich_metadata(node):
-    text = node.text
-    header = node.metadata.get("header_path", "")
+def match_patterns(text, patterns):
+    return any(
+        p.lower() in text
+        for p in patterns
+    )
 
+with open("metadata_rules.yaml", "r", encoding="utf-8") as f:
+    RULES = yaml.safe_load(f)
+
+def enrich_metadata(node):
+    text = node.text.lower()
+    header = node.metadata.get("header_path", "").lower()
     meta = dict(node.metadata)
 
-    # 1. 标题语义化（规则）
-    if any(k in header for k in ["错误", "失败", "异常"]):
-        meta["topic"] = "error"
+    # defaults
+    meta.setdefault("chunk_type", "text")
+    meta.setdefault("has_error_code", False)
+    meta.setdefault("has_sql", False)
+    meta.setdefault("has_api", False)
+    meta.setdefault("has_number", False)
 
-    elif any(k in header for k in ["配置", "参数"]):
-        meta["topic"] = "config"
+    meta["text_length"] = len(text)
+    meta["is_too_short"] = len(text) < 100
+    meta["is_large_table"] = text.count("|") > 20
 
-    elif any(k in header for k in ["流程", "步骤"]):
-        meta["topic"] = "procedure"
-
-    # 2. 自动标签（基于正文）
-    meta["has_error_code"] = "错误码" in text or "error code" in text.lower()
-
-    meta["has_sql"] = "select " in text.lower() or "update " in text.lower()
-
-    meta["has_api"] = any(k in text for k in ["http", "/api/", "接口"])
-
+    # derived features
     meta["has_number"] = any(c.isdigit() for c in text)
 
-    # 3. chunk 类型（简单启发式）
-    if "步骤" in text or "1." in text:
-        meta["chunk_type"] = "procedure"
+    # header_rules
+    for rule in RULES.get("header_rules", []):
+        if match_patterns(header, rule["match"]):
+            meta[rule["name"]] = rule["value"]
 
-    elif "表" in header or "|" in text:
-        meta["chunk_type"] = "table"
+    # text_rules
+    for rule in RULES.get("text_rules", []):
+        matched = False
+        if rule["type"] == "contains_any":
+            matched = match_patterns(
+                text,
+                rule["patterns"]
+            )
+        elif rule["type"] == "regex":
+            matched = any(
+                re.search(p, text)
+                for p in rule["patterns"]
+            )
+        if matched:
+            meta[rule["name"]] = rule["value"]
 
-    else:
-        meta["chunk_type"] = "text"
+    # chunk_type_rules
+    for rule in RULES.get("chunk_type_rules", []):
+        target = rule.get("target", "text")
+        source = text
+        if target == "header":
+            source = header
+        if match_patterns(source, rule["match"]):
+            meta["chunk_type"] = rule["value"]
+            break
 
     return meta
 
@@ -96,7 +180,7 @@ if __name__ == "__main__":
     doc_path = args.doc_path
     debug_mode = args.debug
 
-    log("Start")
+    log("Starting...")
     load_dotenv()
 
     Settings.llm = OpenAILike(
@@ -113,7 +197,7 @@ if __name__ == "__main__":
         embed_batch_size=32,
     )
 
-    log(f"Index: {doc_path}")
+    log(f"Reading from: {doc_path}")
     documents = SimpleDirectoryReader(
         input_dir=doc_path,
         recursive=True,
@@ -265,23 +349,25 @@ if __name__ == "__main__":
 
 
     # 建索引
-    log("Index")
+    log("Indexing...")
     index = VectorStoreIndex(
         nodes=final_nodes,
         show_progress=True,
         )
-    log("Persist")
+    log("Persisting...")
     index.storage_context.persist()
-    log("Query engine")
+    log("Query testing...")
     query_engine = index.as_query_engine(
-        similarity_top_k=3
+        similarity_top_k=5
     )
 
     quest_str = "文档主要是啥内容？"
     log(f"Question: {quest_str}")
     response = query_engine.query(quest_str)
-    log("answer:")
+    log("Answer:")
 
     print("\n")
     print(response.response)
     print("\n")
+
+    log("All done ✅")

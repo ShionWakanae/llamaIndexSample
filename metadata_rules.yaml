@@ -1,0 +1,67 @@
+header_rules:
+
+  - name: topic
+    match:
+      - 错误
+      - 失败
+      - 异常
+    value: error
+
+  - name: topic
+    match:
+      - 配置
+      - 参数
+    value: config
+
+  - name: topic
+    match:
+      - 流程
+      - 步骤
+    value: procedure
+
+
+text_rules:
+
+  - name: has_error_code
+    type: contains_any
+    patterns:
+      - 错误码
+      - error code
+    value: true
+
+  - name: has_sql
+    type: regex
+    patterns:
+      - "(?i)select\\s+"
+      - "(?i)update\\s+"
+      - "(?i)delete\\s+"
+      - "(?i)insert\\s+"
+    value: true
+
+  - name: has_api
+    type: contains_any
+    patterns:
+      - "/api/"
+      - "http"
+      - "接口"
+    value: true
+
+
+chunk_type_rules:
+
+  - target: text
+    match:
+      - 步骤1
+      - 操作步骤
+      - 流程如下
+    value: procedure
+
+  - target: text
+    match:
+      - "|"
+    value: table
+
+  - target: header
+    match:
+      - 配置
+    value: config_doc
