@@ -29,10 +29,10 @@
    
 ### 查询检索
 1. 使用LLM语义和BM25关键词的混合检索。
-2. 对召回内容进行重排序。
+1. 对召回内容进行重排序。
 
 ## 安装
-1. 安装本项目：将仓库代码克隆到一个本地目录：
+1. 将仓库代码克隆到一个本地目录：
 `git clone https://github.com/ShionWakanae/llamaIndexSample.git`
 2. 进入这个目录建立虚拟环境：`python -m venv venv`
 3. 激活虚拟环境：`.\venv\scripts\activate`
