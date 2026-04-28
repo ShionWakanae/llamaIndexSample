@@ -69,7 +69,10 @@ RERANKER_MODEL=BAAI/bge-reranker-v2-m3      #可以不修改，自动从hf上下
 ```
 
 ### （2）建立知识库
-索引`.md`类型的文件：`python .\src\sample\Sample_index_with_llamaCpp.py 你的MD文件目录`
+索引`.md`类型的文件：
+``` shell
+python .\src\sample\Sample_index_with_llamaCpp.py '你的MD文件目录'
+```
 
 如果是N卡建议使用CUDA，否则请注释掉`device="cuda",`语句。
 
@@ -80,18 +83,22 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 ```
 
 速度对比：
-```console
-i9-12900F：Generating embeddings: 100%|████████████████████████| 582/582 [06:45<00:00, 1.43it/s]
-4060TI16G：Generating embeddings: 100%|████████████████████████| 582/582 [00:30<00:00, 19.26it/s]
-```
+
+> i9-12900F：Generating embeddings: 100%|████████████████████████| 582/582 [06:45<00:00, 1.43it/s]
+> 4060TI16G：Generating embeddings: 100%|████████████████████████| 582/582 [00:30<00:00, 19.26it/s]
+
 
 ### （3）查询知识库
-查询知识库中的内容：`python .\src\sample\Sample_RAG_from_storage.py '你的问题'`
+查询知识库中的内容：
+``` shell
+python .\src\sample\Sample_RAG_from_storage.py '你的问题'
+```
 
 ## 演示
 点击打开B站视频：
 
-[![视频演示](https://i2.hdslb.com/bfs/archive/5bf16a799cc21268d626462a89255220daf10ef4.jpg@308w_174h)](https://www.bilibili.com/video/BV1rb9zB5EAD/)
+[![BM25视频演示](https://i2.hdslb.com/bfs/archive/5bf16a799cc21268d626462a89255220daf10ef4.jpg@308w_174h)](https://www.bilibili.com/video/BV1rb9zB5EAD/) [![Index和RAG演示](https://i2.hdslb.com/bfs/archive/728ece5712492028faf11833f9fada09f2bf645a.jpg@308w_174h)](https://www.bilibili.com/video/BV1po9yBhEFH/)  
+
 
 ## 授权
 ![license](https://img.shields.io/github/license/ShionWakanae/llamaIndexSample.svg "MIT license")
