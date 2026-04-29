@@ -4,7 +4,7 @@ from rich import print
 from rich.text import Text
 from rich.live import Live
 from utils.AsyncSpinner import AsyncSpinner
-from rag.engine import engine
+from rag.service import service
 
 def log(msg):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -47,24 +47,39 @@ print()
 log("Answer:")
 print()
 spinner = AsyncSpinner()
-with Live(Text("....", style="yellow"), refresh_per_second=2) as live:
+with Live(Text("....", style="yellow"),refresh_per_second=2) as live:
     spinner.live = live
-    spinner.start()    
+    spinner.start()
     first = True
-    response = engine.query(quest_str)
-    for chunk in response.response_gen:
-        if chunk :
-            if first:
-                spinner.stop()
-                live.stop()
-                # print()
-                first = False
-            print(f"[bold bright_magenta]{chunk}[/]", end="", flush=True)
+    source_nodes = []
+    for event in service.stream_answer(
+        quest_str
+    ):
+        if event["type"] == "token":
+            chunk = event["content"]
+            if chunk:
+                if first:
+                    spinner.stop()
+                    live.stop()
+                    first = False
+                print(
+                    f"[bold bright_magenta]{chunk}[/]",
+                    end="",
+                    flush=True,
+                )
+        elif event["type"] == "sources":
+            source_nodes = (
+                event["content"]
+            )
 
     if first:
         spinner.stop()
         live.stop()
-        print(f"[bold bright_magenta]对不起，我检索了资料，但还是不知道答案……[/]")
+        print(
+            "[bold bright_magenta]"
+            "对不起，我检索了资料，但还是不知道答案……"
+            "[/]"
+        )
     
 print()
 print()
@@ -72,7 +87,7 @@ print("Reference:")
 print()
 all_files = []
 j = 0
-for i, node in enumerate(response.source_nodes):
+for i, node in enumerate(source_nodes):
     # print(node.metadata)
     file_name = node.metadata.get("file_name")
     if file_name and (file_name not in all_files):
@@ -86,7 +101,7 @@ show_details = input("你要查看具体的命中信息吗？[y/N]: ").strip().l
 if  show_details.lower() in ("y", "yes"):
     log("命中的内容:")
     print(">>>----------------------------------------------------------------------------<<<")
-    for node in response.source_nodes:
+    for node in source_nodes:
         print(">>>metadata:",node.metadata)
         print(">>>score:", node.score)
         print(node.text[:512])

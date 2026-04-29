@@ -3,6 +3,10 @@ import re
 import datetime
 import warnings
 from rich import print
+warnings.filterwarnings(
+    "ignore",
+    message="pkg_resources is deprecated as an API"
+)
 import jieba
 
 from dotenv import load_dotenv
@@ -44,12 +48,6 @@ from llama_index.core.schema import (
 
 from llama_index.core.postprocessor import (
     SimilarityPostprocessor,
-)
-
-
-warnings.filterwarnings(
-    "ignore",
-    message="pkg_resources is deprecated as an API"
 )
 
 logging.set_verbosity_error()

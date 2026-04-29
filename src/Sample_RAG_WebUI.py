@@ -2,7 +2,7 @@ import datetime
 import warnings
 import html
 import gradio as gr
-from rag.engine import engine
+from rag.service import service
 
 css = """
 #main_container {
@@ -49,32 +49,73 @@ def highlight_text(text, query):
     return text
 
 def chat(message, history):
-    
+
     log(f"Question: {message}")
+
     history = history or []
+
     partial_text = ""
-    response = engine.query(message)
+
+    source_nodes = []
+
     got_answer = False
 
-    for chunk in response.response_gen:
-        if chunk:
+
+    for event in service.stream_answer(
+        message
+    ):
+
+        if event["type"] == "token":
+
             got_answer = True
-            partial_text += chunk
+
+            partial_text += (
+                event["content"]
+            )
+
             yield history + [
                 [message, partial_text]
             ]
+
+
+        elif event["type"] == "sources":
+
+            source_nodes = (
+                event["content"]
+            )
+
+
+        elif event["type"] == "status":
+
+            got_answer = (
+                event["got_answer"]
+            )
+
+
     log("Answer completed")
+
+
     if not got_answer:
-        partial_text = "对不起，我检索了资料，但还是不知道答案……"
+
+        partial_text = (
+            "对不起，我检索了资料，但还是不知道答案……"
+        )
+
 
     refs = []
-    for node in response.source_nodes:
+
+
+    for node in source_nodes:
+
         file_name = node.metadata.get(
             "file_name",
             "unknown"
         )
 
-        score = round(node.score or 0, 4)
+        score = round(
+            node.score or 0,
+            4
+        )
 
         snippet = html.escape(
             node.text[:500]
@@ -86,22 +127,35 @@ def chat(message, history):
         )
 
         refs.append(
+
             (
                 "<details>"
-                f"<summary><b>{file_name}</b> "
-                f"(score={score})</summary>"
+
+                f"<summary>"
+                f"<b>{file_name}</b> "
+                f"(score={score})"
+                f"</summary>"
+
                 "<br><br>"
+
                 f"{snippet}"
+
                 "</details>"
             )
         )
 
+
     if refs:
 
         partial_text += (
-            "\n\n---\n# 参考片段\n"
+
+            "\n\n---\n"
+
+            "# 参考片段\n"
+
             + "\n".join(refs)
         )
+
 
     yield history + [
         [message, partial_text]
