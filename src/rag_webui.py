@@ -77,6 +77,7 @@ def chat(message, history):
                 ],
                 gr.update(),
                 gr.update(),
+                "",
             )
 
         #
@@ -148,6 +149,7 @@ def chat(message, history):
         # debug html
         #
         debug_html,
+        "",
     )
 
 
@@ -236,6 +238,7 @@ with gr.Blocks(
             chatbot,
             file_selector,
             debug_panel,
+            msg,
         ],
     )
 
