@@ -90,7 +90,7 @@ def chat(message, history):
     CURRENT_FILES.clear()
     CURRENT_FILES.update(file_map)
 
-    partial_text += f"\n\n---\n## 参考文件\n{ref_text}"
+    partial_text += f"\n\n---\n### 参考文件\n{ref_text}"
 
     yield (
         history
