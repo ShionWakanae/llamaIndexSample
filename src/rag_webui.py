@@ -1,186 +1,24 @@
-import os
 import datetime
 from rich import print
 import gradio as gr
 from rag.service import service
 from rag.formatter import build_reference_files
 
-css = """
-/* =========================================
-   Layout
-========================================= */
-
-#main_container {
-    max-width: 1100px;
-    margin: auto;
-}
-
-#file_preview {
-    height: 75vh;
-    overflow-y: auto;
-}
-
-/* =========================================
-   Global Font
-========================================= */
-
-html,
-body,
-.gradio-container,
-.gradio-container * {
-    font-family:
-        "Microsoft YaHei",
-        "PingFang SC",
-        "Noto Sans SC",
-        sans-serif !important;
-}
-
-/* =========================================
-   Chat Area
-========================================= */
-
-.message-wrap {
-    line-height: 1.75;
-    font-size: 15px;
-}
-
-/* assistant bubble */
-.bot {
-    background: #111827 !important;
-    border: 1px solid #253047 !important;
-}
-
-/* user bubble */
-.user {
-    background: #374151 !important;
-}
-
-/* markdown content */
-.message-wrap p,
-.message-wrap li {
-    color: #e5e7eb;
-}
-
-/* code block */
-pre {
-    background: #0b1220 !important;
-    border-radius: 10px !important;
-    border: 1px solid #334155 !important;
-    padding: 12px !important;
-    overflow-x: auto;
-}
-
-/* inline code */
-code {
-    background: #1e293b !important;
-    padding: 2px 5px;
-    border-radius: 4px;
-    color: #f8fafc;
-}
-
-/* =========================================
-   Reference Files
-========================================= */
-
-.reference-files {
-    margin-top: 16px;
-    padding-top: 12px;
-    border-top: 1px solid #334155;
-}
-
-.reference-files ul {
-    margin-top: 10px;
-    padding-left: 20px;
-}
-
-.reference-files li {
-    margin-bottom: 6px;
-    color: #cbd5e1;
-}
-
-.reference-files a {
-    color: #93c5fd;
-    text-decoration: none;
-}
-
-.reference-files a:hover {
-    text-decoration: underline;
-    color: #bfdbfe;
-}
-
-/* =========================================
-   Debug Panel
-========================================= */
-
-.debug-panel {
-    background: #111827;
-    border: 1px solid #253047;
-    border-radius: 12px;
-    padding: 12px;
-    height: 75vh;
-    overflow-y: auto;
-    font-size: 13px;
-    color: #d1d5db;
-}
-
-.debug-panel h3 {
-    margin-top: 0;
-    color: #f9fafb;
-}
-
-.debug-score {
-    color: #93c5fd;
-    font-weight: bold;
-}
-
-/* =========================================
-   Textbox
-========================================= */
-
-textarea {
-    font-size: 15px !important;
-    line-height: 1.6 !important;
-}
-
-/* =========================================
-   Scrollbar
-========================================= */
-
-::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
-}
-
-::-webkit-scrollbar-track {
-    background: #111827;
-}
-
-::-webkit-scrollbar-thumb {
-    background: #475569;
-    border-radius: 999px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: #64748b;
-}
-
-/* Firefox */
-* {
-    scrollbar-width: thin;
-    scrollbar-color: #475569 #111827;
-}
-"""
-
 CURRENT_FILES = {}
+
+with open(
+    "src/ui/styles.css",
+    "r",
+    encoding="utf-8",
+) as f:
+    css = f.read()
 
 
 def show_file(file_name):
-
     if not file_name:
         return "未选择文件"
 
     path = CURRENT_FILES.get(file_name)
-
     if not path:
         return "文件不存在"
 
