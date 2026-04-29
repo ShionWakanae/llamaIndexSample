@@ -277,15 +277,13 @@ with gr.Blocks(
 ) as demo:
     with gr.Row():
         with gr.Column(elem_id="main_container", scale=3):
-            gr.Markdown("# 企业知识库问答")
-
+            gr.Markdown("## 企业知识库问答")
             chatbot = gr.Chatbot(
                 type="messages",
                 height="75vh",
                 show_copy_button=True,
                 render_markdown=True,
             )
-
             msg = gr.Textbox(
                 placeholder="请输入问题...",
                 lines=1,
@@ -293,11 +291,12 @@ with gr.Blocks(
             )
 
         with gr.Column(scale=1):
+            gr.Markdown("## 额外信息")
             file_selector = gr.Dropdown(
                 label="参考文件",
                 choices=[],
+                allow_custom_value=False,
             )
-
             debug_panel = gr.HTML(
                 value="""
                 <div class='debug-panel'>
