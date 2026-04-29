@@ -42,3 +42,96 @@ def build_reference_files(source_nodes):
         "\n".join(refs),
         files,
     )
+
+
+def build_debug_html(debug_data):
+
+    if not debug_data:
+        return """
+        <div class="debug-panel">
+            无调试信息
+        </div>
+        """
+
+    timing = debug_data.get("timing", {})
+
+    retrieval = debug_data.get(
+        "retrieval",
+        [],
+    )
+
+    html = """
+    <div class="debug-panel">
+
+        <h3>Timing</h3>
+    """
+
+    html += f"""
+        <div>
+            query:
+            {timing.get("query_ms", 0)}
+            ms
+        </div>
+
+        <div>
+            llm:
+            {timing.get("llm_ms", 0)}
+            ms
+        </div>
+
+        <div>
+            total:
+            {timing.get("total_ms", 0)}
+            ms
+        </div>
+
+        <hr>
+
+        <h3>
+            Retrieval
+            ({len(retrieval)})
+        </h3>
+    """
+
+    for item in retrieval:
+        html += f"""
+
+        <div class="debug-item">
+
+            <div>
+                <b>
+                    #{item.get("rank")}
+                </b>
+
+                {item.get("file_name")}
+            </div>
+
+            <div>
+                score:
+                {item.get("score")}
+            </div>
+
+            <div>
+                lines:
+                {item.get("line_start")}
+                -
+                {item.get("line_end")}
+            </div>
+
+            <div>
+                chunk:
+                {item.get("chunk_type")}
+            </div>
+
+            <div style="margin-top:4px; color:#94a3b8;">
+                {item.get("header_path")}
+            </div>
+
+            <hr>
+
+        </div>
+        """
+
+    html += "</div>"
+
+    return html

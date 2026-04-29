@@ -8,8 +8,12 @@
 }
 
 #file_preview {
-    height: 75vh;
+    height: 39vh;
     overflow-y: auto;
+}
+
+#debug_preview {
+    margin-top: 12px;
 }
 
 /* =========================================
@@ -103,16 +107,28 @@ code {
 /* =========================================
    Debug Panel
 ========================================= */
+.debug-preview {
+    height: 33vh;
+    overflow: hidden;
+    border: none !important;
+    padding: 0 !important;
+    scrollbar-width: none ;
+}
+
+.debug-preview>div {
+    height: 100%;
+}
 
 .debug-panel {
-    background: #111827;
-    border: 1px solid #253047;
-    border-radius: 12px;
-    padding: 12px;
-    height: 75vh;
+    max-height: 90%;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    padding: 0px;
     overflow-y: auto;
-    font-size: 13px;
+    font-size: 11px;
     color: #d1d5db;
+    box-sizing: border-box;
 }
 
 .debug-panel h3 {
