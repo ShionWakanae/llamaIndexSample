@@ -60,40 +60,34 @@ def chat(message, history):
 
     got_answer = False
 
-
-    for event in service.stream_answer(
-        message
-    ):
+    for event in service.stream_answer(message):
 
         if event["type"] == "token":
 
             got_answer = True
 
-            partial_text += (
-                event["content"]
-            )
+            partial_text += event["content"]
 
             yield history + [
-                [message, partial_text]
+                {
+                    "role": "user",
+                    "content": message,
+                },
+                {
+                    "role": "assistant",
+                    "content": partial_text,
+                },
             ]
-
 
         elif event["type"] == "sources":
 
-            source_nodes = (
-                event["content"]
-            )
-
+            source_nodes = event["content"]
 
         elif event["type"] == "status":
 
-            got_answer = (
-                event["got_answer"]
-            )
-
+            got_answer = event["got_answer"]
 
     log("Answer completed")
-
 
     if not got_answer:
 
@@ -101,9 +95,7 @@ def chat(message, history):
             "对不起，我检索了资料，但还是不知道答案……"
         )
 
-
     refs = []
-
 
     for node in source_nodes:
 
@@ -112,10 +104,7 @@ def chat(message, history):
             "unknown"
         )
 
-        score = round(
-            node.score or 0,
-            4
-        )
+        score = round(node.score or 0, 4)
 
         snippet = html.escape(
             node.text[:500]
@@ -127,38 +116,35 @@ def chat(message, history):
         )
 
         refs.append(
-
             (
                 "<details>"
-
                 f"<summary>"
                 f"<b>{file_name}</b> "
                 f"(score={score})"
                 f"</summary>"
-
                 "<br><br>"
-
                 f"{snippet}"
-
                 "</details>"
             )
         )
 
-
     if refs:
 
         partial_text += (
-
             "\n\n---\n"
-
             "# 参考片段\n"
-
             + "\n".join(refs)
         )
 
-
     yield history + [
-        [message, partial_text]
+        {
+            "role": "user",
+            "content": message,
+        },
+        {
+            "role": "assistant",
+            "content": partial_text,
+        },
     ]
 
 
@@ -175,8 +161,8 @@ with gr.Blocks(
         )
 
         chatbot = gr.Chatbot(
+            type="messages",
             height="75vh",
-            bubble_full_width=False,
             show_copy_button=True,
             render_markdown=True,
         )
