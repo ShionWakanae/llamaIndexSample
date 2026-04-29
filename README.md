@@ -1,23 +1,22 @@
 # 项目简介
-[![Follow me on CSDN](https://img.shields.io/badge/若苗瞬-CSDN-blue)](https://blog.csdn.net/ddrfan?type=blog)
-[![Follow Me on Bilibili](https://img.shields.io/badge/关注我-bilibili-red?style=flat&logo=youtube)](https://space.bilibili.com/688222797)
+[![Me on CSDN](https://img.shields.io/badge/若苗瞬-CSDN-blue)](https://blog.csdn.net/ddrfan?type=blog)
+[![Me on Bilibili](https://img.shields.io/badge/欢迎-bilibili-red?style=flat&logo=youtube)](https://space.bilibili.com/688222797)
 
 
 ## 这是在干啥
-我正在尝试通过开发基于LlamaIndex的程序。从0开始，学习和理解企业知识库和RAG的知识……
+我正在尝试通过开发基于LlamaIndex的程序。像这只小猫，从0学习和理解企业知识库和RAG的知识。  
 ![](res/cat_typing.gif)
 
-## 什么是LlamaIndex
+## 关于LlamaIndex
 > [!Note]
-> 一个面向大语言模型（LLM）的数据接入与检索增强（RAG）框架，核心目标是让开发者能够方便地将本地文档、数据库、API、知识库等外部数据连接到大模型，实现“基于私有数据回答问题”的能力。
+> 面向大语言模型（LLM）的数据接入与检索增强（RAG）框架，用于将本地文档、数据库、API、知识库等外部数据连接到大模型，实现基于私有数据的问答能力。
 >
->它最初以“LLM 与外部数据之间的桥梁”为定位，后来逐渐发展为一个完整的 RAG 开发框架。开发者可以使用 LlamaIndex 对文档进行读取、切分（chunking）、向量化（embedding）、索引构建、检索（retrieval）、重排序（rerank），并最终将检索结果交给大语言模型生成答案。
+>它最初定位为“LLM 与外部数据之间的桥梁”，后来发展为完整的 RAG 开发框架。开发者可以使用 LlamaIndex 完成文档读取、切分（chunking）、向量化（embedding）、索引构建、检索（retrieval）和重排序（rerank）等流程，并将结果交给大语言模型生成答案。
 >
-> LlamaIndex 支持多种数据源，包括本地文件、PDF、Markdown、数据库、Notion、Slack 等，也支持接入不同的向量数据库和模型服务，例如 FAISS、Chroma、Qdrant、OpenAI、本地 llama.cpp 模型等。它同时提供了大量高级 RAG 能力，例如结构化 Chunking、混合检索（Hybrid Search）、查询路由、多索引组合、Agent 工具调用，以及基于文档结构的上下文增强。
+>LlamaIndex 支持多种数据源、向量数据库和模型服务，例如 PDF、Markdown、FAISS、Chroma、Qdrant、OpenAI 以及本地 llama.cpp 模型，同时提供混合检索、查询路由、多索引组合等高级 RAG 能力。
 >
-> 相比“手工拼接 embedding + 向量库 + prompt”的传统做法，LlamaIndex 更强调模块化和可组合性。开发者可以快速搭建一个基础 RAG 系统，也可以逐步替换其中的检索器、索引结构、重排序模型和查询流程，实现更复杂的企业级知识检索系统。
->
-> 在当前的 AI 应用开发中，LlamaIndex 常被用于企业知识库问答、文档搜索、客服机器人、代码知识检索、多文档分析，以及本地离线 RAG 系统等场景。
+>相比手工拼接 embedding、向量库和 prompt 的传统方案，LlamaIndex 更强调模块化与可组合性，适用于知识库问答、文档搜索、代码检索和本地离线 RAG 等场景。
+
 
 ## 项目功能
 ### （1）建立知识库
@@ -38,7 +37,7 @@
 1. 命令行或简单的WebUI作为查询界面。
 
 ## 安装
-1. 将仓库代码克隆到一个本地目录：
+1. 将仓库代码克隆到一个本地目录： 
 `git clone https://github.com/ShionWakanae/llamaIndexSample.git`
 2. 进入这个目录建立虚拟环境：`python -m venv venv`
 3. 激活虚拟环境：`.\venv\scripts\activate`
@@ -51,7 +50,7 @@
 >
 > 对于markitdown的用法可以参考我的 [`MarkItDownSample.py`](./src/ref/MarkItDownSample.py) 的写法。
 > 
-> 当然这个参考文件是无法在此项目环境中运行的，你需要参考 [mark it down](https://github.com/microsoft/markitdown) 的官方说明，建立一个它的运行环境。
+> 这个参考文件无法在本项目环境中运行，你需要参考 [mark it down](https://github.com/microsoft/markitdown) 的说明，建立它的运行环境。
 > 
 > 样例文件最主要的作用是对Word中图片的处理，比如示意图，流程图，架构图，会被转换成相应的文字描述。但可惜的是，单提示词对多种图片的处理效果并不好，最好是能有个区分流程，多Agent处理多种类型图片。这是另外的主题了，而且坑也不少。总之这只是个样例。
 > 
@@ -78,8 +77,7 @@ RERANKER_MODEL=BAAI/bge-reranker-v2-m3      #可以不修改，自动从hf上下
 python .\src\index_cli.py '你的MD文件目录'
 ```
 
-如果是N卡建议使用CUDA，否则请注释掉`device="cuda",`语句。
-
+如果是N卡建议使用CUDA，否则请注释掉`device="cuda",`语句。  
 使用CUDA的方式（注意自己的显卡，和对应安装CUDA的版本）：
 ``` shell
 pip uninstall torch torchvision torchaudio
@@ -124,4 +122,4 @@ python .\src\reg_webui.py
 ## 授权许可
 ![license](https://img.shields.io/github/license/ShionWakanae/llamaIndexSample.svg "MIT license")
 
-根据LlamaIndex的授权许可，本项目采用MIT许可证开源。
+依照LlamaIndex，本项目采用MIT许可证开源。
