@@ -1,46 +1,64 @@
-import html
-
-
-def highlight_text(text, query):
-    keywords = query.split()
-    for kw in keywords:
-        kw = kw.strip()
-        if len(kw) > 1:
-            text = text.replace(kw, f"<mark>{kw}</mark>")
-
-    return text
-
-
 def build_reference_section(
     source_nodes,
-    query,
 ):
-    refs = []
+    file_names = []
+    seen = set()
     for node in source_nodes:
-        file_name = node.metadata.get("file_name", "unknown")
-        score = round(node.score or 0, 4)
-        snippet = html.escape(node.text[:500])
-        snippet = highlight_text(
-            snippet,
-            query,
+        file_name = node.metadata.get(
+            "file_name",
+            "unknown",
         )
+        if file_name in seen:
+            continue
 
-        refs.append(
-            (
-                "<details>"
-                f"<summary>"
-                f"<b>{file_name}</b> "
-                f"(score={score})"
-                f"</summary>"
-                "<br>"
-                "<div style='font-size: 0.8em;'>"
-                f"{snippet}"
-                "</div>"
-                "</details>"
-            )
-        )
+        seen.add(file_name)
+        file_names.append(file_name)
 
-    if not refs:
+    if not file_names:
         return ""
 
-    return "\n\n---\n# 参考片段\n" + "\n".join(refs)
+    lines = [
+        "",
+        "",
+        "---",
+        "# 参考文件",
+        "",
+    ]
+
+    for file_name in file_names:
+        lines.append(f"- {file_name}")
+
+    return "\n".join(lines)
+
+
+def build_reference_files(source_nodes):
+
+    refs = []
+    files = {}
+
+    seen = set()
+
+    for node in source_nodes:
+        file_name = node.metadata.get(
+            "file_name",
+            "unknown",
+        )
+
+        file_path = node.metadata.get(
+            "file_path",
+            "",
+        )
+
+        if file_path in seen:
+            continue
+
+        seen.add(file_path)
+
+        refs.append(f"- {file_name}")
+
+        files[file_name] = file_path
+
+    return (
+        "\n".join(refs),
+        files,
+    )
