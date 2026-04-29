@@ -2,8 +2,6 @@ import datetime
 import warnings
 import html
 import gradio as gr
-
-from transformers.utils import logging
 from rag.engine import engine
 
 css = """
@@ -30,8 +28,6 @@ warnings.filterwarnings(
     "ignore",
     message="pkg_resources is deprecated as an API"
 )
-
-logging.set_verbosity_error()
 
 def log(msg):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")

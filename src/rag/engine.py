@@ -1,7 +1,8 @@
 import os
 import re
+import datetime
 import warnings
-
+from rich import print
 import jieba
 
 from dotenv import load_dotenv
@@ -55,6 +56,10 @@ logging.set_verbosity_error()
 
 load_dotenv()
 
+def log(msg):
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{timestamp}] {msg}")
+
 
 def hybrid_tokenizer(text):
 
@@ -79,7 +84,7 @@ class RagEngine:
 
     def __init__(self):
 
-        print("[RAG] Initializing...")
+        log("[RAG] Initializing...")
 
         self._init_models()
 
@@ -87,7 +92,7 @@ class RagEngine:
             self._build_query_engine()
         )
 
-        print("[RAG] Ready")
+        log("[RAG] Ready")
 
 
     def _init_models(self):
@@ -142,7 +147,7 @@ class RagEngine:
 
     def _build_query_engine(self):
 
-        print("[RAG] Loading storage...")
+        log("[RAG] Loading storage...")
 
         storage_context = (
             StorageContext.from_defaults(
@@ -167,7 +172,7 @@ class RagEngine:
             if isinstance(n, TextNode)
         ]
 
-        print(
+        log(
             f"[RAG] Loaded nodes: "
             f"{len(all_nodes)}"
         )

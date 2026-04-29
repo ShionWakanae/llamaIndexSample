@@ -3,10 +3,7 @@ import datetime
 from rich import print
 from rich.text import Text
 from rich.live import Live
-
-from transformers.utils import logging
 from utils.AsyncSpinner import AsyncSpinner
-
 from rag.engine import engine
 
 def log(msg):
@@ -18,8 +15,6 @@ if len(sys.argv) != 2:
     sys.exit(1)
 
 quest_str = sys.argv[1]
-log("Starting...")
-logging.set_verbosity_error()
 
 log("Question:")
 print()
