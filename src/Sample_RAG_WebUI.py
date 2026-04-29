@@ -2,7 +2,7 @@ import datetime
 import os
 import re
 import warnings
-
+import html
 import gradio as gr
 import jieba
 
@@ -22,6 +22,25 @@ from llama_index.retrievers.bm25 import BM25Retriever
 from llama_index.core.schema import TextNode
 from llama_index.core.postprocessor import SimilarityPostprocessor
 
+css = """
+#main_container {
+    max-width: 1100px;
+    margin: auto;
+}
+
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: #111827;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #374151;
+    border-radius: 10px;
+}
+"""
 
 warnings.filterwarnings(
     "ignore",
@@ -151,68 +170,125 @@ query_engine = RetrieverQueryEngine.from_args(
 
 log("System ready")
 
+def highlight_text(text, query):
+
+    keywords = query.split()
+
+    for kw in keywords:
+
+        if len(kw.strip()) > 1:
+
+            text = text.replace(
+                kw,
+                f"<mark>{kw}</mark>"
+            )
+
+    return text
 
 def chat(message, history):
-
+    
     log(f"Question: {message}")
-
-    response = query_engine.query(message)
-
+    history = history or []
     partial_text = ""
-
+    response = query_engine.query(message)
     got_answer = False
 
     for chunk in response.response_gen:
-
         if chunk:
             got_answer = True
             partial_text += chunk
-
-            yield partial_text
-
+            yield history + [
+                [message, partial_text]
+            ]
+    log("Answer completed")
     if not got_answer:
-        yield "对不起，我检索了资料，但还是不知道答案……"
-        return
+        partial_text = "对不起，我检索了资料，但还是不知道答案……"
 
-    files = []
-
+    refs = []
     for node in response.source_nodes:
+        file_name = node.metadata.get(
+            "file_name",
+            "unknown"
+        )
 
-        file_name = node.metadata.get("file_name")
+        score = round(node.score or 0, 4)
 
-        if file_name and file_name not in files:
-            files.append(file_name)
+        snippet = html.escape(
+            node.text[:500]
+        )
 
-    if files:
+        snippet = highlight_text(
+            snippet,
+            message
+        )
 
-        partial_text += "\n\n---\n参考文件：\n"
+        refs.append(
+            (
+                "<details>"
+                f"<summary><b>{file_name}</b> "
+                f"(score={score})</summary>"
+                "<br><br>"
+                f"{snippet}"
+                "</details>"
+            )
+        )
 
-        for i, f in enumerate(files, 1):
-            partial_text += f"\n({i}) {f}"
+    if refs:
 
-        yield partial_text
+        partial_text += (
+            "\n\n---\n# 参考片段\n"
+            + "\n".join(refs)
+        )
+
+    yield history + [
+        [message, partial_text]
+    ]
 
 
-demo = gr.ChatInterface(
-    fn=chat,
+with gr.Blocks(
+    theme=gr.themes.Soft(),
+    css=css,
+    fill_height=True,
+) as demo:
+    with gr.Column(elem_id="main_container"):
+        gr.Markdown(
+            """
+# 企业知识库问答
+"""
+        )
 
-    title="企业知识库问答",
+        chatbot = gr.Chatbot(
+            height="75vh",
+            bubble_full_width=False,
+            show_copy_button=True,
+            render_markdown=True,
+        )
 
-    chatbot=gr.Chatbot(
-        height=700,
-    ),
+        msg = gr.Textbox(
+            placeholder="请输入问题...",
+            lines=1,
+            submit_btn=True,
+        )
 
-    textbox=gr.Textbox(
-        placeholder="请输入问题...",
-        container=True,
-        scale=7,
-    ),
+        # clear = gr.Button(
+        #     "清空对话",
+        #     size="sm",
+        #     scale=0,
+        # )
 
-    type="messages",
-)
+        msg.submit(
+            fn=chat,
+            inputs=[msg, chatbot],
+            outputs=chatbot,
+        )
+
+        # clear.click(
+        #     lambda: [],
+        #     outputs=chatbot,
+        # )
 
 
 demo.launch(
-    server_name="0.0.0.0",
+    server_name="127.0.0.1",
     server_port=7860,
 )
