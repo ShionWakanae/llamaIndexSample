@@ -13,9 +13,11 @@ import re
 from collections import Counter, defaultdict
 from parser.MarkdownHeadingAwareParser import MarkdownHeadingAwareParser
 
+
 def log(msg):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{timestamp}] {msg}")
+
 
 def print_metadata_stats(final_nodes):
 
@@ -45,7 +47,6 @@ def print_metadata_stats(final_nodes):
             "has_api",
             "has_number",
         ]:
-
             if meta.get(key) is True:
                 stats[key]["true"] += 1
 
@@ -55,7 +56,6 @@ def print_metadata_stats(final_nodes):
     print("=" * 60)
 
     for category, counter in stats.items():
-
         print()
         print(f"***{category}***")
 
@@ -64,15 +64,12 @@ def print_metadata_stats(final_nodes):
         print(f"matched nodes: {total_matched}")
 
         for k, v in counter.most_common():
-
             percent = (v / total_nodes) * 100
 
-            print(
-                f"  {k}: {v} "
-                f"({percent:.1f}%)"
-            )
+            print(f"  {k}: {v} ({percent:.1f}%)")
 
-def Show_debug_info_and_exit(final_nodes:list):
+
+def Show_debug_info_and_exit(final_nodes: list):
     node_max = -1
     node_min = -1
     node_max_index = -1
@@ -80,7 +77,7 @@ def Show_debug_info_and_exit(final_nodes:list):
 
     print_metadata_stats(final_nodes)
 
-    if len(final_nodes)>=10:
+    if len(final_nodes) >= 10:
         log("Print first max and min markdown node metadata")
         for i, node in enumerate(final_nodes):
             # print(f"({i})","=" * 80)
@@ -96,24 +93,24 @@ def Show_debug_info_and_exit(final_nodes:list):
                 node_max_index = i
 
         print(f"Node max length:{node_max}, and min length:{node_min}")
-        
-        print(f"min({node_min})No.{node_min_index}","=" * 80)
-        print("[meta_data]",final_nodes[node_min_index].metadata)
-        print("[node_text]",final_nodes[node_min_index].text)
-        print(f"max({node_max})No.{node_max_index}","=" * 80)
-        print("[meta_data]",final_nodes[node_max_index].metadata)
-        print("[node_text]",final_nodes[node_max_index].text[:500])
-        
+
+        print(f"min({node_min})No.{node_min_index}", "=" * 80)
+        print("[meta_data]", final_nodes[node_min_index].metadata)
+        print("[node_text]", final_nodes[node_min_index].text)
+        print(f"max({node_max})No.{node_max_index}", "=" * 80)
+        print("[meta_data]", final_nodes[node_max_index].metadata)
+        print("[node_text]", final_nodes[node_max_index].text[:500])
+
     exit(1)
 
+
 def match_patterns(text, patterns):
-    return any(
-        p.lower() in text
-        for p in patterns
-    )
+    return any(p.lower() in text for p in patterns)
+
 
 with open("metadata_rules.yaml", "r", encoding="utf-8") as f:
     RULES = yaml.safe_load(f)
+
 
 def enrich_metadata(node):
     text = node.text.lower()
@@ -143,15 +140,9 @@ def enrich_metadata(node):
     for rule in RULES.get("text_rules", []):
         matched = False
         if rule["type"] == "contains_any":
-            matched = match_patterns(
-                text,
-                rule["patterns"]
-            )
+            matched = match_patterns(text, rule["patterns"])
         elif rule["type"] == "regex":
-            matched = any(
-                re.search(p, text)
-                for p in rule["patterns"]
-            )
+            matched = any(re.search(p, text) for p in rule["patterns"])
         if matched:
             meta[rule["name"]] = rule["value"]
 
@@ -167,12 +158,15 @@ def enrich_metadata(node):
 
     return meta
 
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='若苗瞬的 LlamaIndex 文档索引工具')
-    parser.add_argument('doc_path', help='文档路径')
-    parser.add_argument('--debug', action='store_true', help='启用调试模式,只打印分块信息，不索引和保存')
+    parser = argparse.ArgumentParser(description="若苗瞬的 LlamaIndex 文档索引工具")
+    parser.add_argument("doc_path", help="文档路径")
+    parser.add_argument(
+        "--debug", action="store_true", help="启用调试模式,只打印分块信息，不索引和保存"
+    )
     args = parser.parse_args()
-    
+
     # 使用参数
     doc_path = args.doc_path
     debug_mode = args.debug
@@ -205,11 +199,7 @@ if __name__ == "__main__":
     for doc in documents:
         text = doc.get_content()
 
-        cleaned = (
-            text.replace("\r\n", "\n")
-                .replace("\r", "\n")
-                .replace(r"\_", "_")
-        )
+        cleaned = text.replace("\r\n", "\n").replace("\r", "\n").replace(r"\_", "_")
 
         doc.text_resource.text = cleaned
 
@@ -220,8 +210,8 @@ if __name__ == "__main__":
     )
 
     markdown_nodes = markdown_parser.get_nodes_from_documents(
-        documents = documents,
-        )
+        documents=documents,
+    )
     log(f"markdown nodes:{len(markdown_nodes)}")
 
     # for i, node in enumerate(markdown_nodes):
@@ -239,31 +229,19 @@ if __name__ == "__main__":
     def is_title_only(node):
         text = node.text.strip()
 
-        return (
-            text.startswith("#")
-            and "\n" not in text
-        )
+        return text.startswith("#") and "\n" not in text
 
     candidate_nodes = []
 
     for node in markdown_nodes:
-
         if is_title_only(node):
             continue
 
-        header = (
-            node.metadata.get("header_path", "")
-            .strip("/")
-            .replace("/", " > ")
-        )
+        header = node.metadata.get("header_path", "").strip("/").replace("/", " > ")
 
         # 小 section
         if len(node.text) < 1200:
-
-            enriched_text = (
-                f"[SECTION]\n{header}\n\n"
-                f"[CONTENT]\n{node.text}"
-            )
+            enriched_text = f"[SECTION]\n{header}\n\n[CONTENT]\n{node.text}"
 
             candidate_nodes.append(
                 TextNode(
@@ -274,14 +252,9 @@ if __name__ == "__main__":
 
         # 大 section -> split
         else:
-
             sub_nodes = splitter.get_nodes_from_documents([node])
             for sub_node in sub_nodes:
-
-                enriched_text = (
-                    f"[SECTION]\n{header}\n\n"
-                    f"[CONTENT]\n{sub_node.text}"
-                )
+                enriched_text = f"[SECTION]\n{header}\n\n[CONTENT]\n{sub_node.text}"
 
                 candidate_nodes.append(
                     TextNode(
@@ -297,28 +270,17 @@ if __name__ == "__main__":
     final_nodes = []
     i = 0
     while i < len(candidate_nodes):
-
         current = candidate_nodes[i]
         current_header = current.metadata.get("header_path", "")
         current_len = len(current.text)
 
-        if (
-            current_len < 256
-            and i + 1 < len(candidate_nodes)
-        ):
+        if current_len < 256 and i + 1 < len(candidate_nodes):
             nxt = candidate_nodes[i + 1]
             next_header = nxt.metadata.get("header_path", "")
             merged_len = current_len + len(nxt.text)
 
-            if (
-                current_header == next_header
-                and merged_len < 1200
-            ):
-                merged_text = (
-                    current.text
-                    + "\n\n"
-                    + nxt.text
-                )
+            if current_header == next_header and merged_len < 1200:
+                merged_text = current.text + "\n\n" + nxt.text
 
                 enriched_meta = enrich_metadata(current)
                 final_nodes.append(
@@ -349,19 +311,16 @@ if __name__ == "__main__":
     if debug_mode:
         Show_debug_info_and_exit(final_nodes)
 
-
     # 建索引
     log("Indexing...")
     index = VectorStoreIndex(
         nodes=final_nodes,
         show_progress=True,
-        )
+    )
     log("Persisting...")
     index.storage_context.persist()
     log("Query testing...")
-    query_engine = index.as_query_engine(
-        similarity_top_k=5
-    )
+    query_engine = index.as_query_engine(similarity_top_k=5)
 
     quest_str = "文档主要是啥内容？"
     log(f"Question: {quest_str}")

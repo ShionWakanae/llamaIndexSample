@@ -24,6 +24,7 @@ css = """
 }
 """
 
+
 def log(msg):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{timestamp}] {msg}")
@@ -42,9 +43,7 @@ def chat(message, history):
     got_answer = False
 
     for event in service.stream_answer(message):
-
         if event["type"] == "token":
-
             got_answer = True
 
             partial_text += event["content"]
@@ -61,20 +60,15 @@ def chat(message, history):
             ]
 
         elif event["type"] == "sources":
-
             source_nodes = event["content"]
 
         elif event["type"] == "status":
-
             got_answer = event["got_answer"]
 
     log("Answer completed")
 
     if not got_answer:
-
-        partial_text = (
-            "对不起，我检索了资料，但还是不知道答案……"
-        )
+        partial_text = "对不起，我检索了资料，但还是不知道答案……"
 
     partial_text += build_reference_section(
         source_nodes,

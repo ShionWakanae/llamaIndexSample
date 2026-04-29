@@ -6,9 +6,11 @@ from rich.live import Live
 from utils.AsyncSpinner import AsyncSpinner
 from rag.service import service
 
+
 def log(msg):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{timestamp}] {msg}")
+
 
 if len(sys.argv) != 2:
     print("Usage: python Sample_RAG_from_storage.py 'Your_Question...'")
@@ -47,14 +49,12 @@ print()
 log("Answer:")
 print()
 spinner = AsyncSpinner()
-with Live(Text("....", style="yellow"),refresh_per_second=2) as live:
+with Live(Text("....", style="yellow"), refresh_per_second=2) as live:
     spinner.live = live
     spinner.start()
     first = True
     source_nodes = []
-    for event in service.stream_answer(
-        quest_str
-    ):
+    for event in service.stream_answer(quest_str):
         if event["type"] == "token":
             chunk = event["content"]
             if chunk:
@@ -68,19 +68,13 @@ with Live(Text("....", style="yellow"),refresh_per_second=2) as live:
                     flush=True,
                 )
         elif event["type"] == "sources":
-            source_nodes = (
-                event["content"]
-            )
+            source_nodes = event["content"]
 
     if first:
         spinner.stop()
         live.stop()
-        print(
-            "[bold bright_magenta]"
-            "对不起，我检索了资料，但还是不知道答案……"
-            "[/]"
-        )
-    
+        print("[bold bright_magenta]对不起，我检索了资料，但还是不知道答案……[/]")
+
 print()
 print()
 print("Reference:")
@@ -98,13 +92,17 @@ print()
 
 log("End of answer")
 show_details = input("你要查看具体的命中信息吗？[y/N]: ").strip().lower()
-if  show_details.lower() in ("y", "yes"):
+if show_details.lower() in ("y", "yes"):
     log("命中的内容:")
-    print(">>>----------------------------------------------------------------------------<<<")
+    print(
+        ">>>----------------------------------------------------------------------------<<<"
+    )
     for node in source_nodes:
-        print(">>>metadata:",node.metadata)
+        print(">>>metadata:", node.metadata)
         print(">>>score:", node.score)
         print(node.text[:512])
-        print(">>>----------------------------------------------------------------------------<<<")
+        print(
+            ">>>----------------------------------------------------------------------------<<<"
+        )
 
 log("All done ✅")

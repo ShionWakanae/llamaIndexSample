@@ -1,5 +1,4 @@
 import re
-from typing import List
 
 from llama_index.core.schema import TextNode
 
@@ -49,9 +48,7 @@ class MarkdownHeadingAwareParser:
         all_nodes = []
 
         for doc in documents:
-
             text = doc.text or ""
-
             nodes = self._parse_document(
                 text=text,
                 metadata=doc.metadata,
@@ -63,9 +60,7 @@ class MarkdownHeadingAwareParser:
         # prev / next relation
         #
         if self.include_prev_next_rel:
-
             for i, node in enumerate(all_nodes):
-
                 if i > 0:
                     node.relationships["previous"] = all_nodes[i - 1].node_id
 
@@ -75,9 +70,7 @@ class MarkdownHeadingAwareParser:
         return all_nodes
 
     def _parse_document(self, text: str, metadata: dict):
-
         lines = text.splitlines()
-
         nodes = []
 
         #
@@ -87,9 +80,7 @@ class MarkdownHeadingAwareParser:
         # ]
         #
         header_stack = []
-
         current_content = []
-
         current_header_path = "/"
 
         def flush_section():
@@ -118,14 +109,12 @@ class MarkdownHeadingAwareParser:
             nodes.append(node)
 
         for line in lines:
-
             match = self.HEADER_RE.match(line)
 
             #
             # heading found
             #
             if match:
-
                 #
                 # flush previous section
                 #
@@ -141,10 +130,7 @@ class MarkdownHeadingAwareParser:
                 #
                 # pop same-or-deeper levels
                 #
-                while (
-                    header_stack
-                    and header_stack[-1][0] >= level
-                ):
+                while header_stack and header_stack[-1][0] >= level:
                     header_stack.pop()
 
                 #
@@ -155,19 +141,9 @@ class MarkdownHeadingAwareParser:
                 #
                 # rebuild header path
                 #
-                path_parts = [
-                    h[1]
-                    for h in header_stack
-                ]
-
-                current_header_path = (
-                    "/"
-                    + "/".join(path_parts)
-                    + "/"
-                )
-
+                path_parts = [h[1] for h in header_stack]
+                current_header_path = "/" + "/".join(path_parts) + "/"
             else:
-
                 current_content.append(line)
 
         #
