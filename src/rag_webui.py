@@ -15,6 +15,11 @@ css = """
     margin: auto;
 }
 
+#file_preview {
+    height: 75vh;
+    overflow-y: auto;
+}
+
 /* =========================================
    Global Font
 ========================================= */
@@ -187,12 +192,10 @@ def show_file(file_name):
         ) as f:
             content = f.read()
 
-        return (
-            f"<div class='debug-panel'><h3>{file_name}</h3><pre>{content}</pre></div>"
-        )
+        return content
 
     except Exception as e:
-        return str(e)
+        return f"读取失败:\n\n{e}"
 
 
 def log(msg):
@@ -297,17 +300,10 @@ with gr.Blocks(
                 choices=[],
                 allow_custom_value=False,
             )
-            debug_panel = gr.HTML(
-                value="""
-                <div class='debug-panel'>
-                请选择文件
-                </div>
-                """
-            )
-        #
-        # events
-        #
+            with gr.Group(elem_id="file_preview"):
+                debug_panel = gr.Markdown(value="请选择文件")
 
+        # events
         msg.submit(
             fn=chat,
             inputs=[msg, chatbot],
