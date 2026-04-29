@@ -1,10 +1,10 @@
-# 我的LlamaIndex的样例程序
+# 项目简介
 [![Follow me on CSDN](https://img.shields.io/badge/若苗瞬-CSDN-blue)](https://blog.csdn.net/ddrfan?type=blog)
 [![Follow Me on Bilibili](https://img.shields.io/badge/关注我-bilibili-red?style=flat&logo=youtube)](https://space.bilibili.com/688222797)
 
 
 ## 这是在干啥
-我正在尝试通过开发基于LlamaIndex的程序，从0理解企业知识库和RAG的知识……
+我正在尝试通过开发基于LlamaIndex的程序。从0开始，学习和理解企业知识库和RAG的知识……
 ![](res/cat_typing.gif)
 
 ## 什么是LlamaIndex
@@ -35,6 +35,7 @@
 1. 给没有耐心的人准备了spinner和流式输出。
 1. 当LLM无回答时，避免界面无内容响应。 
 1. 可选的打印召回命中数据（便于排查）。
+1. 命令行或简单的WebUI作为查询界面。
 
 ## 安装
 1. 将仓库代码克隆到一个本地目录：
@@ -109,7 +110,18 @@ python .\src\reg_webui.py
 [![BM25视频演示](https://i2.hdslb.com/bfs/archive/5bf16a799cc21268d626462a89255220daf10ef4.jpg@308w_174h)](https://www.bilibili.com/video/BV1rb9zB5EAD/) [![Index和RAG演示](https://i2.hdslb.com/bfs/archive/728ece5712492028faf11833f9fada09f2bf645a.jpg@308w_174h)](https://www.bilibili.com/video/BV1po9yBhEFH/)  
 
 
-## 授权
+## 技术关联
+![Python](https://img.shields.io/badge/-Python-silver?logo=Python)
+![Pytorch](https://img.shields.io/badge/-Pytorch-silver?logo=Pytorch)
+![Markdown](https://img.shields.io/badge/-Markdown-blue?logo=Markdown)
+[![Reddit](https://img.shields.io/reddit/subreddit-subscribers/LlamaIndex?style=plastic&logo=reddit&label=r%2FLlamaIndex&labelColor=white)](https://www.reddit.com/r/LlamaIndex/)
+![Gradio](https://img.shields.io/badge/Gradio-UI-silver?logo=Gradio)
+![Rich](https://img.shields.io/badge/Rich-Print-silver?logo=Rich)
+![Yaml](https://img.shields.io/badge/-Yaml-brown?logo=Yaml)
+![huggingface](https://img.shields.io/badge/-huggingface-navy?logo=huggingface)
+![jieba](https://img.shields.io/badge/汉字-jieba-red?logo=jieba)
+
+## 授权许可
 ![license](https://img.shields.io/github/license/ShionWakanae/llamaIndexSample.svg "MIT license")
 
-本项目采用MIT许可证开源。
+根据LlamaIndex的授权许可，本项目采用MIT许可证开源。
