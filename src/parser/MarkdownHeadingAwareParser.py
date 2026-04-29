@@ -81,13 +81,16 @@ class MarkdownHeadingAwareParser:
         #
         header_stack = []
         current_content = []
+        current_start_line = 0
+        current_end_line = 0
         current_header_path = "/"
 
         def flush_section():
 
             nonlocal current_content
             nonlocal current_header_path
-
+            nonlocal current_start_line
+            nonlocal current_end_line
             content = "\n".join(current_content).strip()
 
             #
@@ -97,7 +100,8 @@ class MarkdownHeadingAwareParser:
                 return
 
             node_metadata = dict(metadata)
-
+            node_metadata["line_start"] = current_start_line
+            node_metadata["line_end"] = current_end_line
             if self.include_metadata:
                 node_metadata["header_path"] = current_header_path
 
@@ -108,7 +112,7 @@ class MarkdownHeadingAwareParser:
 
             nodes.append(node)
 
-        for line in lines:
+        for line_no, line in enumerate(lines):
             match = self.HEADER_RE.match(line)
 
             #
@@ -119,12 +123,10 @@ class MarkdownHeadingAwareParser:
                 # flush previous section
                 #
                 flush_section()
-
+                current_start_line = line_no + 1
                 current_content = []
-
                 hashes = match.group(1)
                 title = match.group(2).strip()
-
                 level = len(hashes)
 
                 #
@@ -145,6 +147,7 @@ class MarkdownHeadingAwareParser:
                 current_header_path = "/" + "/".join(path_parts) + "/"
             else:
                 current_content.append(line)
+                current_end_line = line_no
 
         #
         # flush last section
