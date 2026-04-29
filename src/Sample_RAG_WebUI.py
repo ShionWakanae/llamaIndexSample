@@ -1,8 +1,8 @@
 import datetime
-import warnings
-import html
+from rich import print
 import gradio as gr
 from rag.service import service
+from rag.formatter import build_reference_section
 
 css = """
 #main_container {
@@ -24,29 +24,10 @@ css = """
 }
 """
 
-warnings.filterwarnings(
-    "ignore",
-    message="pkg_resources is deprecated as an API"
-)
-
 def log(msg):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{timestamp}] {msg}")
 
-def highlight_text(text, query):
-
-    keywords = query.split()
-
-    for kw in keywords:
-
-        if len(kw.strip()) > 1:
-
-            text = text.replace(
-                kw,
-                f"<mark>{kw}</mark>"
-            )
-
-    return text
 
 def chat(message, history):
 
@@ -95,46 +76,10 @@ def chat(message, history):
             "对不起，我检索了资料，但还是不知道答案……"
         )
 
-    refs = []
-
-    for node in source_nodes:
-
-        file_name = node.metadata.get(
-            "file_name",
-            "unknown"
-        )
-
-        score = round(node.score or 0, 4)
-
-        snippet = html.escape(
-            node.text[:500]
-        )
-
-        snippet = highlight_text(
-            snippet,
-            message
-        )
-
-        refs.append(
-            (
-                "<details>"
-                f"<summary>"
-                f"<b>{file_name}</b> "
-                f"(score={score})"
-                f"</summary>"
-                "<br><br>"
-                f"{snippet}"
-                "</details>"
-            )
-        )
-
-    if refs:
-
-        partial_text += (
-            "\n\n---\n"
-            "# 参考片段\n"
-            + "\n".join(refs)
-        )
+    partial_text += build_reference_section(
+        source_nodes,
+        message,
+    )
 
     yield history + [
         {
