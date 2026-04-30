@@ -93,9 +93,7 @@ class IndexBuilder:
                 )
             )
 
-            #
             # small section
-            #
             if len(node.text) < global_chunk_size + global_chunk_overlap:
                 enriched_text = f"[SECTION]\n{header}\n\n[CONTENT]\n{node.text}"
                 candidate_nodes.append(
@@ -105,20 +103,65 @@ class IndexBuilder:
                     )
                 )
 
-            #
             # large section
-            #
             else:
                 split_count += 1
                 sub_nodes = self.splitter.get_nodes_from_documents([node])
                 for sub_node in sub_nodes:
-                    enriched_text = f"[SECTION]\n{header}\n\n[CONTENT]\n{sub_node.text}"
-                    candidate_nodes.append(
-                        TextNode(
-                            text=enriched_text,
-                            metadata=(sub_node.metadata),
+                    #
+                    # fallback hard split
+                    # if splitter failed to split huge content
+                    #
+                    if len(sub_node.text) > int(global_chunk_size * 1.5):
+                        lines = sub_node.text.splitlines()
+                        current_chunk = ""
+                        for line in lines:
+                            # keep newline
+                            candidate = (
+                                current_chunk + "\n" + line if current_chunk else line
+                            )
+
+                            # flush current chunk when size meet
+                            if len(candidate) > global_chunk_size:
+                                if current_chunk.strip():
+                                    enriched_text = (
+                                        f"[SECTION]\n{header}\n\n[CONTENT]\n"
+                                        f"{current_chunk}"
+                                    )
+                                    candidate_nodes.append(
+                                        TextNode(
+                                            text=enriched_text,
+                                            metadata=sub_node.metadata,
+                                        )
+                                    )
+                                current_chunk = line
+                            else:
+                                current_chunk = candidate
+
+                        # remaining chunk
+                        if current_chunk.strip():
+                            enriched_text = (
+                                f"[SECTION]\n{header}\n\n[CONTENT]\n{current_chunk}"
+                            )
+
+                            candidate_nodes.append(
+                                TextNode(
+                                    text=enriched_text,
+                                    metadata=sub_node.metadata,
+                                )
+                            )
+                    # normal chunk
+                    else:
+                        enriched_text = (
+                            f"[SECTION]\n{header}\n\n[CONTENT]\n{sub_node.text}"
                         )
-                    )
+                        candidate_nodes.append(
+                            TextNode(
+                                text=enriched_text,
+                                metadata=sub_node.metadata,
+                            )
+                        )
+
         if self.debug_mode:
             print(f"== Large nodes splited:{split_count}")
         return candidate_nodes
