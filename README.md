@@ -7,7 +7,7 @@
 我正在尝试通过开发基于LlamaIndex的程序。像这只小猫，从0学习和理解企业知识库和RAG的知识。  
 ![](res/cat_typing.gif)
 
-## 关于LlamaIndex
+## 关于llamaIndex
 > [!Note]
 > 面向大语言模型（LLM）的数据接入与检索增强（RAG）框架，用于将本地文档、数据库、API、知识库等外部数据连接到大模型，实现基于私有数据的问答能力。
 >
@@ -100,26 +100,40 @@ python .\src\rag_cli.py '你的问题'
 ``` shell
 python .\src\reg_webui.py
 ```
-2. 打开浏览器，访问`http://127.0.0.1:7860/`，用看起来非常简陋的页面发送问题查询（太丑了不想截图）。
+2. 打开浏览器，访问`http://127.0.0.1:7860/`（天哪好丑）发送问题进行知识库的查询。  
+左下方textbox中输入问题，左上方是聊天记录。  
+右上方可选最后一次聊天的参考文件，预览`.md`文件内容。  
+右下方是少量调试信息，时长和命中情况。看更详细的信息请用CLI。
 
-## 演示
+![](res/webui.webp)
+
+## 视频演示
 点击打开B站视频：
 
 [![BM25视频演示](https://i2.hdslb.com/bfs/archive/5bf16a799cc21268d626462a89255220daf10ef4.jpg@308w_174h)](https://www.bilibili.com/video/BV1rb9zB5EAD/) [![Index和RAG演示](https://i2.hdslb.com/bfs/archive/728ece5712492028faf11833f9fada09f2bf645a.jpg@308w_174h)](https://www.bilibili.com/video/BV1po9yBhEFH/)  
 
 
-## 技术关联
+## 技术栈
+[![Reddit](https://img.shields.io/reddit/subreddit-subscribers/LlamaIndex?style=plastic&logo=reddit&label=r%2FLlamaIndex&labelColor=white)](https://www.reddit.com/r/LlamaIndex/)
 ![Python](https://img.shields.io/badge/-Python-silver?logo=Python)
 ![Pytorch](https://img.shields.io/badge/-Pytorch-silver?logo=Pytorch)
+![Node.js](https://img.shields.io/badge/-Node.js-silver?logo=Node.js)
+![Gradio](https://img.shields.io/badge/Gradio-UI-silver?logo=Gradio)  
 ![Markdown](https://img.shields.io/badge/-Markdown-blue?logo=Markdown)
-[![Reddit](https://img.shields.io/reddit/subreddit-subscribers/LlamaIndex?style=plastic&logo=reddit&label=r%2FLlamaIndex&labelColor=white)](https://www.reddit.com/r/LlamaIndex/)
-![Gradio](https://img.shields.io/badge/Gradio-UI-silver?logo=Gradio)
 ![Rich](https://img.shields.io/badge/Rich-Print-silver?logo=Rich)
 ![Yaml](https://img.shields.io/badge/-Yaml-brown?logo=Yaml)
 ![huggingface](https://img.shields.io/badge/-huggingface-navy?logo=huggingface)
-![jieba](https://img.shields.io/badge/汉字-jieba-red?logo=jieba)
+![jieba](https://img.shields.io/badge/简体中文-jieba-red?logo=jieba)
+
+## 环境支撑
+![llama.cpp](https://img.shields.io/badge/-llama.cpp-blueviolet?logo=ollama)
+![gemma4](https://img.shields.io/badge/gemma--4--26B--A4B--it--UD--IQ2__M-gguf-blue?logo=Google)
+![github](https://img.shields.io/badge/-github-navy?logo=github)
+![acer](https://img.shields.io/badge/predator-acer-green?logo=acer)
+![nvidia](https://img.shields.io/badge/rtx--4060ti16gb-5a3b92?logo=nvidia)
+![Intel](https://img.shields.io/badge/i9--12900f-navy?logo=Intel)
 
 ## 授权许可
 ![license](https://img.shields.io/github/license/ShionWakanae/llamaIndexSample.svg "MIT license")
 
-依照LlamaIndex，本项目采用MIT许可证开源。
+根据LlamaIndex的声明，本项目采用MIT许可证开源。
