@@ -124,6 +124,7 @@ class MarkdownHeadingAwareParser:
                 #
                 flush_section()
                 current_start_line = line_no + 1
+                current_end_line = line_no + 2
                 current_content = []
                 hashes = match.group(1)
                 title = match.group(2).strip()
