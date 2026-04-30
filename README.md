@@ -44,19 +44,22 @@
 4. 安装依赖：`pip install -r requirements.txt`
 
 ## 使用
+### （0）文档转换为MD格式
 > [!Important]
 > 为了专注于索引和召回（包括调试），暂时先不支持其它格式的文档。
-> 在进行之前，请先把文档处理成为markdown格式`.md`。可以使用微软的 [mark it down](https://github.com/microsoft/markitdown) 或者 [pymupdf4llm](https://github.com/pymupdf/PyMuPDF4LLM) 等等……
+> 在进行之前，请先把文档处理成为markdown格式`.md`。可以使用微软的 [markitdown](https://github.com/microsoft/markitdown)，[pymupdf4llm](https://github.com/pymupdf/PyMuPDF4LLM)，[docling](https://github.com/docling-project/docling)，[marker](https://github.com/datalab-to/marker)等等……
 >
 > 对于markitdown的用法可以参考我的 [`MarkItDownSample.py`](./src/ref/MarkItDownSample.py) 的写法。
-> 
-> 这个参考文件无法在本项目环境中运行，你需要参考 [mark it down](https://github.com/microsoft/markitdown) 的说明，建立它的运行环境。
+> 这个参考文件无法在本项目环境中运行，你需要参考 [markitdown](https://github.com/microsoft/markitdown) 的说明，建立它的运行环境。
 > 
 > 样例文件最主要的作用是对Word中图片的处理，比如示意图，流程图，架构图，会被转换成相应的文字描述。但可惜的是，单提示词对多种图片的处理效果并不好，最好是能有个区分流程，多Agent处理多种类型图片。这是另外的主题了，而且坑也不少。总之这只是个样例。
 > 
-> 样例文件把`.docx`转为`.md`的命令是： 
+> 请人工复查转换后`.md`文档的内容，确认格式正确，章节架构完整，表格没错位，图像描述正确，无目录（TOC）。
+> 人工智能，前期人工付出得多，后期就更加智能。
+> 
+> 样例文件把某目录下所有`.docx`,`.xlsx`,`.pdf`转为`.md`的命令是： 
 ``` shell
-Python .\MarkItDownSample.py "D:\test.docx" "d:\test_my.md"
+Python .\MarkItDownSample.py "Input dir" "Output dir"
 ```
 
 ### （1）配置LLM和模型
