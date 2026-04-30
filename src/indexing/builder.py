@@ -194,7 +194,8 @@ class IndexBuilder:
                 i += 1
                 continue
 
-            current_parent = parent_header(current.metadata.get("header_path", ""))
+            current_header = current.metadata.get("header_path", "")
+            current_parent_header = parent_header(current_header)
 
             merged_text = current.text
             merged_nodes = [current]
@@ -214,10 +215,14 @@ class IndexBuilder:
                     j += 1
                     continue
 
-                next_parent = parent_header(nxt.metadata.get("header_path", ""))
+                next_parent_header = parent_header(nxt.metadata.get("header_path", ""))
 
                 # only merge under same parent section
-                if current_parent != next_parent:
+                # or next is current's child
+                if (
+                    current_parent_header != next_parent_header
+                    and current_header != next_parent_header
+                ):
                     break
 
                 candidate_text = merged_text + "\n\n" + nxt.text
