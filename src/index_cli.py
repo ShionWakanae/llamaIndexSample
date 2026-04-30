@@ -92,11 +92,9 @@ def Show_debug_info_and_exit(final_nodes: list):
         print(f"Node max length:{node_max}, and min length:{node_min}")
 
         print(f"min({node_min})No.{node_min_index}", "=" * 80)
-        print("[meta_data]", final_nodes[node_min_index].metadata)
-        print("[node_text]", final_nodes[node_min_index].text)
+        print("[min node]", final_nodes[node_min_index])
         print(f"max({node_max})No.{node_max_index}", "=" * 80)
-        print("[meta_data]", final_nodes[node_max_index].metadata)
-        print("[node_text]", final_nodes[node_max_index].text[:500])
+        print("[max node]", final_nodes[node_max_index])
 
     exit(1)
 
