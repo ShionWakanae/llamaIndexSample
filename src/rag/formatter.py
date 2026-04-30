@@ -33,7 +33,7 @@ def build_reference_files(source_nodes):
 
         ref_line = f"- `{file_name}`"
         if line_start >= 0 and line_end > line_start:
-            ref_line = f"{ref_line} `{line_start}->{line_end}页`"
+            ref_line = f"{ref_line} `{line_start}->{line_end}行`"
         refs.append(ref_line)
 
         files[file_name] = file_path
