@@ -6,7 +6,6 @@ from indexing.metadata import enrich_metadata
 
 
 global_chunk_size = 1020
-global_chunk_min = 256
 global_chunk_overlap = 80
 
 
@@ -132,49 +131,100 @@ class IndexBuilder:
         i = 0
         merge_count = 0
 
+        def parent_header(header: str) -> str:
+            """
+            /A/B/C/ -> /A/B/
+            /A/B/   -> /A/
+            /A/     -> /
+            """
+            parts = [p for p in header.strip("/").split("/") if p]
+
+            if len(parts) <= 1:
+                return "/"
+
+            return "/" + "/".join(parts[:-1]) + "/"
+
         while i < len(candidate_nodes):
             current = candidate_nodes[i]
-            current_header = current.metadata.get(
-                "header_path",
-                "",
-            )
+
             if len(current.text.strip()) < 1:
                 i += 1
                 continue
 
-            current_len = len(current.text)
-            if current_len < global_chunk_min and (i + 1 < len(candidate_nodes)):
-                nxt = candidate_nodes[i + 1]
-                next_header = nxt.metadata.get(
-                    "header_path",
-                    "",
-                )
-                merged_len = current_len + len(nxt.text)
-                if current_header == next_header and merged_len < global_chunk_size:
-                    merged_text = current.text + "\n\n" + nxt.text
-                    enriched_meta = enrich_metadata(current)
-                    final_nodes.append(
-                        TextNode(
-                            text=merged_text,
-                            metadata=(enriched_meta),
-                        )
-                    )
+            current_parent = parent_header(current.metadata.get("header_path", ""))
 
-                    i += 2
-                    merge_count += 1
+            merged_text = current.text
+            merged_nodes = [current]
+
+            #
+            # keep merging forward while:
+            # - current chunk still too small
+            # - same parent section
+            # - merged size not exceeding limit
+            #
+            j = i + 1
+
+            while len(merged_text) < global_chunk_size and j < len(candidate_nodes):
+                nxt = candidate_nodes[j]
+
+                if len(nxt.text.strip()) < 1:
+                    j += 1
                     continue
 
-            enriched_meta = enrich_metadata(current)
+                next_parent = parent_header(nxt.metadata.get("header_path", ""))
+
+                # only merge under same parent section
+                if current_parent != next_parent:
+                    break
+
+                candidate_text = merged_text + "\n\n" + nxt.text
+
+                # stop if exceeding max chunk size
+                if len(candidate_text) > global_chunk_size:
+                    break
+
+                merged_text = candidate_text
+                merged_nodes.append(nxt)
+
+                j += 1
+
+            # metadata based on merged range
+            base_meta = dict(current.metadata)
+
+            # update line range
+            if len(merged_nodes) > 1:
+                last_node = merged_nodes[-1]
+                if "line_end" in last_node.metadata:
+                    base_meta["line_end"] = last_node.metadata["line_end"]
+
+                # optional:
+                # merged chunk count
+                base_meta["merged_chunks"] = len(merged_nodes)
+                base_meta["merged_headers"] = [
+                    n.metadata.get("header_path") for n in merged_nodes
+                ]
+
+            temp_node = TextNode(
+                text=merged_text,
+                metadata=base_meta,
+            )
+
+            enriched_meta = enrich_metadata(temp_node)
             final_nodes.append(
                 TextNode(
-                    text=current.text,
-                    metadata=(enriched_meta),
+                    text=merged_text,
+                    metadata=enriched_meta,
                 )
             )
-            i += 1
+
+            if len(merged_nodes) > 1:
+                merge_count += len(merged_nodes) - 1
+
+            i = j if len(merged_nodes) > 1 else i + 1
 
         if self.debug_mode:
             print(f"== small nodes merged:{merge_count}")
+
         return final_nodes
 
     def _is_title_only(
