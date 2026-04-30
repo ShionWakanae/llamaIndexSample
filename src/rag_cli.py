@@ -1,5 +1,6 @@
 import sys
 import datetime
+import builtins
 from rich import print
 from rich.text import Text
 from rich.live import Live
@@ -20,7 +21,7 @@ quest_str = sys.argv[1]
 
 log("Question:")
 print()
-q_obj = Text(quest_str, style="bold bright_yellow")
+q_obj = Text(f"\t{quest_str}", style="bold bright_yellow")
 print(q_obj)
 print()
 
@@ -94,15 +95,17 @@ log("End of answer")
 show_details = input("你要查看具体的命中信息吗？[y/N]: ").strip().lower()
 if show_details.lower() in ("y", "yes"):
     log("命中的内容:")
-    print(
-        ">>>----------------------------------------------------------------------------<<<"
-    )
     for node in source_nodes:
-        print(">>>metadata:", node.metadata)
-        print(">>>score:", node.score)
-        print(node.text[:512])
         print(
-            ">>>----------------------------------------------------------------------------<<<"
+            ">>>-------------------------------------------------------------------------------<<<"
         )
+        print(">>> score:(", node.score, ") metadata：", node.metadata)
+        builtins.print(
+            node.text.replace(
+                "\n",
+                " ",
+            )
+        )
+        print()
 
 log("All done ✅")

@@ -12,37 +12,14 @@ from llama_index.core import (
     load_index_from_storage,
 )
 
-from llama_index.embeddings.huggingface import (
-    HuggingFaceEmbedding,
-)
-
-from llama_index.llms.openai_like import (
-    OpenAILike,
-)
-
-from llama_index.postprocessor.flag_embedding_reranker import (
-    FlagEmbeddingReranker,
-)
-
-from llama_index.core.retrievers import (
-    QueryFusionRetriever,
-)
-
-from llama_index.core.query_engine import (
-    RetrieverQueryEngine,
-)
-
-from llama_index.retrievers.bm25 import (
-    BM25Retriever,
-)
-
-from llama_index.core.schema import (
-    TextNode,
-)
-
-from llama_index.core.postprocessor import (
-    SimilarityPostprocessor,
-)
+from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from llama_index.llms.openai_like import OpenAILike
+from llama_index.postprocessor.flag_embedding_reranker import FlagEmbeddingReranker
+from llama_index.core.retrievers import QueryFusionRetriever
+from llama_index.core.query_engine import RetrieverQueryEngine
+from llama_index.retrievers.bm25 import BM25Retriever
+from llama_index.core.schema import TextNode
+# from llama_index.core.postprocessor import SimilarityPostprocessor
 
 warnings.filterwarnings("ignore", message="pkg_resources is deprecated as an API")
 import jieba  # noqa: E402
@@ -92,6 +69,7 @@ class RagEngine:
 4. 回答尽量准确、简洁。
 5. 尽量用列表的方式输出并列的内容。
 6. 如果文档存在歧义，指出歧义。
+7. 如果发现提供的上下文从语义上被截断，提示用户`参考并以原始文档为准！`。
 """,
         )
 
@@ -108,12 +86,12 @@ class RagEngine:
         log(f"[RAG] Loaded nodes: {len(all_nodes)}")
 
         vector_retriever = index.as_retriever(
-            similarity_top_k=15,
+            similarity_top_k=20,
         )
 
         bm25_retriever = BM25Retriever.from_defaults(
             nodes=all_nodes,
-            similarity_top_k=15,
+            similarity_top_k=20,
             tokenizer=hybrid_tokenizer,
             language="zh",
             skip_stemming=True,
@@ -124,23 +102,23 @@ class RagEngine:
                 vector_retriever,
                 bm25_retriever,
             ],
-            similarity_top_k=30,
+            similarity_top_k=40,
             num_queries=1,
             mode="reciprocal_rerank",
             use_async=False,
         )
 
-        similarity_filter = SimilarityPostprocessor(similarity_cutoff=0.001)
+        # similarity_filter = SimilarityPostprocessor(similarity_cutoff=0.001)
 
         reranker = FlagEmbeddingReranker(
             model=os.getenv("RERANKER_MODEL"),
-            top_n=5,
+            top_n=8,
         )
 
         return RetrieverQueryEngine.from_args(
             retriever,
             node_postprocessors=[
-                similarity_filter,
+                # similarity_filter,
                 reranker,
             ],
             streaming=True,
