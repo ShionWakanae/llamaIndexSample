@@ -62,8 +62,7 @@ def build_debug_html(debug_data):
 
     html = """
     <div class="debug-panel">
-
-        <h3>Timing</h3>
+        <h5 style="background-color:DodgerBlue;">Timing</h5>
     """
 
     html += f"""
@@ -87,10 +86,10 @@ def build_debug_html(debug_data):
 
         <hr>
 
-        <h3>
+        <h5 style="background-color:DodgerBlue;">
             Retrieval
             ({len(retrieval)})
-        </h3>
+        </h5>
     """
 
     for item in retrieval:

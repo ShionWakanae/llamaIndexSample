@@ -15,25 +15,16 @@ from rag.formatter import build_debug_html
 CURRENT_FILES = {}
 
 
-#
-# helpers
-#
-
-
 def log(msg):
-
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
     print(f"[{timestamp}] {msg}")
 
 
 def read_file(file_name):
-
     if not file_name:
         return "请选择文件"
 
     path = CURRENT_FILES.get(file_name)
-
     if not path:
         return "文件不存在"
 
@@ -72,7 +63,7 @@ ui.add_head_html(
 
     body {
         overflow: hidden;
-        background: #111111;
+        background: #050505;
         color: #e0e0e0;
     }
 
@@ -95,11 +86,8 @@ ui.add_head_html(
     .q-card,
     .q-message-text,
     .border-panel {
-
         background: #1b1b1b !important;
-
         border: 1px solid #3a3a3a !important;
-
         color: #e0e0e0 !important;
     }
 
@@ -122,12 +110,10 @@ ui.add_head_html(
     */
 
     .q-message-text {
-
         background: #222222 !important;
-
         color: #eaeaea !important;
-
         border-radius: 10px;
+        line-height: 1.6;
     }
 
 
@@ -179,6 +165,56 @@ ui.add_head_html(
     ::-webkit-scrollbar-track {
 
         background: #1b1b1b;
+    }
+
+    /*
+        inline code
+    */
+    code {
+
+        background: #2b2b2b !important;
+
+        color: #ffcb6b !important;
+
+        padding: 2px 6px;
+
+        border-radius: 4px;
+
+        font-family: Consolas, monospace;
+
+        font-size: 0.95em;
+    }
+
+
+    /*
+        code block
+    */
+
+    pre {
+
+        background: #1a1a1a !important;
+
+        border: 1px solid #3a3a3a;
+
+        border-radius: 8px;
+
+        padding: 12px;
+
+        overflow-x: auto;
+    }
+
+
+    /*
+        code inside pre
+    */
+
+    pre code {
+
+        background: transparent !important;
+
+        color: #dcdcdc !important;
+
+        padding: 0;
     }
     </style>
     """
@@ -287,6 +323,10 @@ with (
                         with ui.chat_message(
                             sent=True,
                             name="User",
+                        ).style(
+                            """
+                            max-width: 80%;
+                            """
                         ):
                             ui.markdown(message)
 
@@ -298,8 +338,14 @@ with (
                         with ui.chat_message(
                             sent=False,
                             name="Assistant",
+                        ).style(
+                            """
+                            max-width: 80%;
+                            """
                         ):
-                            assistant_message = ui.markdown("").classes("w-full")
+                            assistant_message = ui.markdown(
+                                "_正在检索资料..._"
+                            ).classes("assistant-markdown")
 
                 #
                 # reset side panel
@@ -361,7 +407,8 @@ with (
 
                     if event["type"] == "token":
                         got_answer = True
-
+                        if partial_text == "":
+                            assistant_message.content = ""
                         partial_text += event["content"]
 
                         #
