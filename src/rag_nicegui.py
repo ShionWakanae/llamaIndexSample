@@ -130,14 +130,11 @@ ui.add_head_html(
         assistant消息
     */
     .q-message-received .q-message-text {
-
         background: #222222 !important;
-
         color: #dddddd !important;
     }
 
     .q-message-received .q-message-text * {
-
         color: #dddddd !important;
     }
 
@@ -214,9 +211,7 @@ ui.add_head_html(
         color: #dddddd;
         display: block;
     }
-    .q-message-text-content {
-        width: 100%;
-    }
+
     .final-markdown {
         line-height: 1.6;
         color: #dddddd;
@@ -354,7 +349,11 @@ with (
                                     正在检索资料...
                                 </div>
                                 """
-                            ).classes("w-full")
+                            ).style(
+                                """
+                                width: 100%;
+                                """
+                            )
 
                 #
                 # reset side panel
