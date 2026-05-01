@@ -1,7 +1,6 @@
 import asyncio
 import datetime
 import threading
-from pathlib import Path
 from queue import Queue
 import markdown
 import html
@@ -14,21 +13,15 @@ from rag.formatter import build_reference_files
 from rag.formatter import build_debug_html
 
 
-CURRENT_FILES = {}
-
-
 def log(msg):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{timestamp}] {msg}")
 
 
-def read_file(file_name):
-    if not file_name:
-        return "请选择文件"
+def read_file_by_path(path):
 
-    path = CURRENT_FILES.get(file_name)
     if not path:
-        return "文件不存在"
+        return "文件不存在！"
 
     try:
         with open(
@@ -42,30 +35,16 @@ def read_file(file_name):
         return f"读取失败:\n\n{e}"
 
 
-def update_file_preview():
-
-    content = read_file(file_selector.value)
-
-    #
-    # 直接 markdown 渲染
-    #
-
-    file_viewer.content = content
-
-    file_viewer.update()
-
-
 #
 # page
 #
-
 ui.add_head_html(
     """
     <style>
 
     body {
         overflow: hidden;
-        background: #050505;
+        background: #151515;
         color: #e0e0e0;
     }
 
@@ -221,7 +200,7 @@ with (
     .style(
         """
     height: 100vh;
-    max-width: 1600px;
+    max-width: 1680px;
     margin: 0 auto;
     padding: 12px;
     gap: 12px;
@@ -235,17 +214,13 @@ with (
 
     with ui.column().style(
         """
-        width: 60%;
+        width: 55%;
         height: 100%;
         overflow: hidden;
         """
     ):
         ui.markdown("### 企业知识库问答")
-
-        #
         # chat area
-        #
-
         chat_scroll = (
             ui.column()
             .classes("w-full chat-area")
@@ -271,9 +246,9 @@ with (
             .classes("w-full items-center")
             .style(
                 """
-    padding-top: 4px;
-    padding-bottom: 28px;
-    """
+                padding-top: 4px;
+                padding-bottom: 28px;
+                """
             )
         ):
             input_box = (
@@ -288,270 +263,277 @@ with (
 
             async def send_message():
 
-                message = (input_box.value or "").strip()
+                try:
+                    message = (input_box.value or "").strip()
 
-                if not message:
-                    return
+                    if not message:
+                        return
 
-                input_box.value = ""
-
-                log(f"Question: {message}")
-
-                #
-                # user message
-                #
-
-                with chat_scroll:
-                    #
-                    # 用户消息：右边
-                    #
-
-                    with ui.row().classes("w-full justify-end"):
-                        with ui.chat_message(
-                            sent=True,
-                            name="User",
-                        ).style(
-                            """
-                            max-width: 80%;
-                            """
-                        ):
-                            ui.markdown(message)
+                    input_box.value = ""
+                    send_button.disable()
+                    input_box.disable()
+                    log(f"Question: {message}")
 
                     #
-                    # assistant
+                    # user message
                     #
 
-                    with ui.row().classes("w-full justify-start"):
-                        with ui.chat_message(
-                            sent=False,
-                            name="Assistant",
-                        ).style(
-                            """
-                            max-width: 80%;
-                            """
-                        ):
-                            assistant_message = ui.html(
-                                """
-                                <div class="streaming-text">
-                                    正在检索资料...
-                                </div>
-                                """
+                    with chat_scroll:
+                        #
+                        # 用户消息：右边
+                        #
+
+                        with ui.row().classes("w-full justify-end"):
+                            with ui.chat_message(
+                                sent=True,
+                                name="User",
                             ).style(
                                 """
-                                width: 100%;
+                                max-width: 80%;
                                 """
-                            )
+                            ):
+                                ui.markdown(message)
 
-                            sources_container = ui.row().classes("gap-2 mt-3")
+                        #
+                        # assistant
+                        #
 
-                #
-                # reset side panel
-                #
+                        with ui.row().classes("w-full justify-start"):
+                            with ui.chat_message(
+                                sent=False,
+                                name="Assistant",
+                            ).style(
+                                """
+                                max-width: 80%;
+                                """
+                            ):
+                                assistant_message = ui.html(
+                                    """
+                                    <div class="streaming-text">
+                                        正在检索资料...
+                                    </div>
+                                    """
+                                ).style(
+                                    """
+                                    width: 100%;
+                                    """
+                                )
+                            sources_container = ui.element("div")
 
-                file_selector.options = []
-                file_selector.value = None
-                file_selector.update()
+                    # reset status
+                    file_preview_title.content = "### 文件预览"
+                    file_preview_title.update()
 
-                debug_panel.content = """
-                <div class="debug-panel">
-                    等待调试信息...
-                </div>
-                """
+                    file_viewer.content = "..."
+                    file_viewer.update()
 
-                debug_panel.update()
-
-                #
-                # state
-                #
-
-                partial_text = ""
-                source_nodes = []
-                got_answer = False
-
-                #
-                # background stream
-                #
-
-                queue = Queue()
-
-                def worker():
-
-                    try:
-                        for event in service.stream_answer(message):
-                            queue.put(event)
-
-                    finally:
-                        queue.put(None)
-
-                threading.Thread(
-                    target=worker,
-                    daemon=True,
-                ).start()
-
-                #
-                # consume
-                #
-
-                while True:
-                    event = await asyncio.to_thread(queue.get)
-
-                    if event is None:
-                        break
+                    debug_panel.content = """
+                    <div class="debug-panel">
+                        waiting for data...
+                    </div>
+                    """
+                    debug_panel.update()
 
                     #
-                    # token
+                    # state
                     #
 
-                    if event["type"] == "token":
-                        got_answer = True
-                        if partial_text == "":
-                            assistant_message.content = ""
-                        partial_text += event["content"]
-
-                        escaped = html.escape(partial_text)
-
-                        escaped = escaped.replace("\n", "<br>")
-
-                        assistant_message.content = f"""
-                        <div class="streaming-text">
-                        {escaped}
-                        </div>
-                        """
-
-                        assistant_message.update()
+                    partial_text = ""
+                    source_nodes = []
+                    got_answer = False
 
                     #
-                    # sources
+                    # background stream
                     #
 
-                    elif event["type"] == "sources":
-                        source_nodes = event["content"]
+                    queue = Queue()
+
+                    def worker():
+
+                        try:
+                            for event in service.stream_answer(message):
+                                queue.put(event)
+
+                        finally:
+                            queue.put(None)
+
+                    threading.Thread(
+                        target=worker,
+                        daemon=True,
+                    ).start()
 
                     #
-                    # debug
+                    # consume
                     #
 
-                    elif event["type"] == "debug":
-                        debug_html = build_debug_html(event["content"])
+                    while True:
+                        event = await asyncio.to_thread(queue.get)
 
-                        debug_panel.content = debug_html
+                        if event is None:
+                            break
 
-                        debug_panel.update()
+                        #
+                        # token
+                        #
 
-                    #
-                    # status
-                    #
+                        if event["type"] == "token":
+                            got_answer = True
+                            if partial_text == "":
+                                assistant_message.content = ""
+                            partial_text += event["content"]
 
-                    elif event["type"] == "status":
-                        got_answer = event["got_answer"]
+                            escaped = html.escape(partial_text)
 
-                log("Answer completed")
+                            escaped = escaped.replace("\n", "<br>")
 
-                #
-                # fallback
-                #
-
-                if not got_answer:
-                    partial_text = "对不起，我检索了资料，但还是不知道答案……"
-
-                #
-                # references
-                #
-
-                (
-                    ref_text,
-                    file_map,
-                ) = build_reference_files(source_nodes)
-
-                CURRENT_FILES.clear()
-                CURRENT_FILES.update(file_map)
-
-                if ref_text:
-                    partial_text += f"\n  \n---  \n##### 参考文件\n{ref_text}"
-
-                #
-                # final update
-                #
-
-                rendered_html = markdown.markdown(
-                    partial_text,
-                    extensions=[
-                        "fenced_code",
-                        "tables",
-                        "nl2br",
-                        "sane_lists",
-                    ],
-                )
-
-                assistant_message.content = f"""
-                <div class="final-markdown">
-                    {rendered_html}
-                </div>
-                """
-                assistant_message.update()
-                #
-                # source buttons
-                #
-
-                shown_files = set()
-
-                with sources_container:
-                    for file_name in file_map.keys():
-                        if file_name in shown_files:
-                            continue
-
-                        shown_files.add(file_name)
-
-                        ui.button(
-                            file_name,
-                            on_click=lambda f=file_name: (
-                                file_selector.set_value(f),
-                                update_file_preview(),
-                            ),
-                        ).props("flat dense").style(
+                            assistant_message.content = f"""
+                            <div class="streaming-text">
+                            {escaped}
+                            </div>
                             """
-                            font-size: 11px;
+
+                            assistant_message.update()
+
+                        #
+                        # sources
+                        #
+
+                        elif event["type"] == "sources":
+                            source_nodes = event["content"]
+
+                        #
+                        # debug
+                        #
+
+                        elif event["type"] == "debug":
+                            debug_html = build_debug_html(event["content"])
+
+                            debug_panel.content = debug_html
+
+                            debug_panel.update()
+
+                        #
+                        # status
+                        #
+
+                        elif event["type"] == "status":
+                            got_answer = event["got_answer"]
+
+                    log("Answer completed")
+
+                    #
+                    # fallback
+                    #
+
+                    if not got_answer:
+                        partial_text = "对不起，我检索了资料，但还是不知道答案……"
+
+                    #
+                    # references
+                    #
+
+                    (
+                        ref_text,
+                        file_map,
+                    ) = build_reference_files(source_nodes)
+
+                    # if ref_text:
+                    #     partial_text += f"\n  \n---  \n##### 参考文件\n{ref_text}"
+
+                    #
+                    # final update
+                    #
+
+                    rendered_html = markdown.markdown(
+                        partial_text,
+                        extensions=[
+                            "fenced_code",
+                            "tables",
+                            "nl2br",
+                            "sane_lists",
+                        ],
+                    )
+
+                    assistant_message.content = f"""
+                    <div class="final-markdown">
+                        {rendered_html}
+                    </div>
+                    """
+                    assistant_message.update()
+                    #
+                    # source buttons
+                    #
+
+                    should_show_sources = (
+                        ref_text
+                        and got_answer
+                        and partial_text.strip()
+                        and partial_text.strip()
+                        not in [
+                            "不知道",
+                            "我不知道",
+                            "无法回答",
+                        ]
+                    )
+                    if should_show_sources:
+                        shown_files = set()
+                        with sources_container:
+                            with ui.row().classes("gap-2 mt-2"):
+                                for file_name, file_path in file_map.items():
+                                    if file_name in shown_files:
+                                        continue
+
+                                    shown_files.add(file_name)
+
+                                    ui.button(
+                                        file_name,
+                                        icon="description",
+                                        on_click=lambda n=file_name, p=file_path: (
+                                            setattr(
+                                                file_preview_title,
+                                                "content",
+                                                f"### 《{n}》",
+                                            ),
+                                            file_preview_title.update(),
+                                            setattr(
+                                                file_viewer,
+                                                "content",
+                                                read_file_by_path(p),
+                                            ),
+                                            file_viewer.update(),
+                                        ),
+                                    ).props("flat dense").style(
+                                        """
+                                        font-size: 11px;
+                                        """
+                                    )
+
+                        #
+                        # auto scroll
+                        #
+                        ui.run_javascript(
+                            """
+                            const area =
+                            document.querySelector(
+                                '.chat-area'
+                            );
+
+                            if (area) {
+                                area.scrollTop =
+                                area.scrollHeight;
+                            }
                             """
                         )
+                finally:
+                    send_button.enable()
+                    input_box.enable()
 
-                #
-                # dropdown
-                #
-                file_selector.options = list(file_map.keys())
-                file_selector.update()
-
-                #
-                # auto scroll
-                #
-
-                ui.run_javascript(
-                    """
-                    const area =
-                    document.querySelector(
-                        '.chat-area'
-                    );
-
-                    if (area) {
-                        area.scrollTop =
-                        area.scrollHeight;
-                    }
-                    """
-                )
-
-            #
             # enter submit
-            #
-
             input_box.on(
                 "keydown.enter",
                 lambda e: send_message(),
             )
-
-            #
-            # send button
-            #
-
-            ui.button(
+            send_button = ui.button(
                 "发送",
                 on_click=send_message,
             )
@@ -562,45 +544,26 @@ with (
 
     with ui.column().style(
         """
-        width: 40%;
+        width: 45%;
         height: 100%;
         overflow: hidden;
         """
     ):
-        ui.markdown("### 额外信息")
-
-        #
-        # file selector
-        #
-
-        file_selector = ui.select(
-            options=[],
-            label="参考文件",
-        ).classes("w-full")
-
-        file_selector.on(
-            "update:model-value",
-            lambda e: update_file_preview(),
-        )
-
+        # ui.markdown("### 额外信息")
         #
         # file preview
         #
 
-        ui.markdown("#### 文件预览")
+        file_preview_title = ui.markdown("### 文件预览")
 
-        file_viewer = ui.markdown("请选择文件").classes("w-full")
+        file_viewer = ui.markdown("...").classes("w-full")
 
         file_viewer.style(
             """
             border: 1px solid #3a3a3a;
-
             border-radius: 8px;
-
             padding: 12px;
-
-            height: 32vh;
-
+            height: 50vh;
             overflow-y: auto;
             """
         )
@@ -622,26 +585,17 @@ with (
         debug_panel.style(
             """
             width: 100%;
-
             border: 1px solid #3a3a3a;
-
             border-radius: 8px;
-
             padding: 12px;
-
-            height: 32vh;
-
+            height: 30vh;
             overflow-y: auto;
-
             font-size: 12px;
             """
         )
 
 
-#
-# run
-#
-
+# run app
 ui.run(
     host="127.0.0.1",
     port=7860,

@@ -48,7 +48,7 @@ def build_debug_html(debug_data):
     if not debug_data:
         return """
         <div class="debug-panel">
-            无调试信息
+            ...
         </div>
         """
 
