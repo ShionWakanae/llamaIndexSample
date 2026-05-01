@@ -86,9 +86,7 @@ ui.add_head_html(
         聊天气泡
     */
     .q-message-text {
-        background: #222222 !important;
-        color: #eaeaea !important;
-        border-radius: 10px;
+        border-radius: 14px;
         line-height: 1.6;
     }
 
@@ -97,8 +95,24 @@ ui.add_head_html(
         用户消息
     */
     .q-message-sent .q-message-text {
+        position: relative;
         color: #eaeaea !important;
         background: #1f3f65 !important;
+    }
+    .q-message-sent .q-message-text::before {
+        /* 隐藏原来的 before 内容 */
+        content: '' !important;
+        position: absolute !important;
+        right: -8px !important;
+        top: 12px !important;
+        width: 0 !important;
+        height: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        /* 画新的三角形 */
+        border-left: 8px solid #1f3f65 !important;
+        border-top: 6px solid transparent !important;
+        border-bottom: 6px solid transparent !important;
     }
     .q-message-sent .q-message-text * {
         color: #eaeaea !important;
@@ -109,8 +123,24 @@ ui.add_head_html(
         assistant消息
     */
     .q-message-received .q-message-text {
+        position: relative;
         background: #222222 !important;
         color: #dddddd !important;
+    }
+    .q-message-received .q-message-text::before {
+        /* 隐藏原来的 before */
+        content: '' !important;
+        position: absolute !important;
+        left: -16px !important;
+        top: 12px !important;
+        width: 0 !important;
+        height: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        /* 画向左的三角形 */
+        border-right: 8px solid #222222 !important;
+        border-top: 6px solid transparent !important;
+        border-bottom: 6px solid transparent !important;
     }
     .q-message-received .q-message-text * {
         color: #dddddd !important;
@@ -121,17 +151,14 @@ ui.add_head_html(
     /*
         滚动区域
     */
-
     ::-webkit-scrollbar {
 
         width: 10px;
     }
-
     ::-webkit-scrollbar-thumb {
 
         background: #444;
     }
-
     ::-webkit-scrollbar-track {
 
         background: #1b1b1b;
@@ -166,13 +193,11 @@ ui.add_head_html(
     /*
         code inside pre
     */
-
     pre code {
         background: transparent !important;
         color: #dcdcdc !important;
         padding: 0;
     }
-
     .streaming-text {
         width: 100%;
         text-align: left !important;
@@ -181,7 +206,6 @@ ui.add_head_html(
         color: #dddddd;
         display: block;
     }
-
     .loading-text {
         animation: pulse 1.2s infinite;
     }
@@ -226,10 +250,7 @@ with (
     """
     )
 ):
-    #
     # left
-    #
-
     with ui.column().style(
         """
         width: 55%;
@@ -256,10 +277,7 @@ with (
             )
         )
 
-        #
         # input row
-        #
-
         with (
             ui.row()
             .classes("w-full items-center")
@@ -291,13 +309,11 @@ with (
 
                     # messages
                     with chat_scroll:
-                        #
                         # 用户消息：右边
-                        #
                         with ui.row().classes("w-full justify-end"):
                             with ui.chat_message(
                                 sent=True,
-                                name="User",
+                                name="human user",
                             ).style(
                                 """
                                 max-width: 80%;
@@ -305,9 +321,7 @@ with (
                             ):
                                 ui.markdown(message)
 
-                        #
-                        # assistant
-                        #
+                        # 助理消息
                         with ui.column().classes("w-full items-start"):
                             with ui.chat_message(
                                 sent=False,
@@ -344,26 +358,18 @@ with (
                     """
                     debug_panel.update()
 
-                    #
                     # state
-                    #
-
                     partial_text = ""
                     source_nodes = []
                     got_answer = False
 
-                    #
                     # background stream
-                    #
-
                     queue = Queue()
 
                     def worker():
-
                         try:
                             for event in service.stream_answer(message):
                                 queue.put(event)
-
                         finally:
                             queue.put(None)
 
@@ -372,30 +378,20 @@ with (
                         daemon=True,
                     ).start()
 
-                    #
                     # consume
-                    #
-
                     while True:
                         event = await asyncio.to_thread(queue.get)
-
                         if event is None:
                             break
 
-                        #
                         # token
-                        #
-
                         if event["type"] == "token":
                             got_answer = True
                             if partial_text == "":
                                 assistant_message.content = ""
                             partial_text += event["content"]
-
                             escaped = html.escape(partial_text)
-
                             escaped = escaped.replace("\n", "<br>")
-
                             assistant_message.content = f"""
                             <div class="streaming-text">
                             {escaped}
@@ -404,44 +400,27 @@ with (
 
                             assistant_message.update()
 
-                        #
                         # sources
-                        #
-
                         elif event["type"] == "sources":
                             source_nodes = event["content"]
 
-                        #
                         # debug
-                        #
-
                         elif event["type"] == "debug":
                             debug_html = build_debug_html(event["content"])
-
                             debug_panel.content = debug_html
-
                             debug_panel.update()
 
-                        #
                         # status
-                        #
-
                         elif event["type"] == "status":
                             got_answer = event["got_answer"]
 
                     log("Answer completed")
 
-                    #
                     # fallback
-                    #
-
                     if not got_answer:
                         partial_text = "对不起，我检索了资料，但还是不知道答案……"
 
-                    #
                     # references
-                    #
-
                     (
                         ref_text,
                         file_map,
@@ -450,10 +429,7 @@ with (
                     # if ref_text:
                     #     partial_text += f"\n  \n---  \n##### 参考文件\n{ref_text}"
 
-                    #
                     # final update
-                    #
-
                     rendered_html = markdown.markdown(
                         partial_text,
                         extensions=[
@@ -470,10 +446,8 @@ with (
                     </div>
                     """
                     assistant_message.update()
-                    #
-                    # source buttons
-                    #
 
+                    # source buttons
                     should_show_sources = (
                         ref_text
                         and got_answer
@@ -522,9 +496,7 @@ with (
                                         """
                                     )
 
-                        #
                         # auto scroll
-                        #
                         ui.run_javascript(
                             """
                             const area =
@@ -552,10 +524,7 @@ with (
                 on_click=send_message,
             )
 
-    #
     # right
-    #
-
     with ui.column().style(
         """
         width: 45%;
@@ -564,14 +533,9 @@ with (
         """
     ):
         # ui.markdown("### 额外信息")
-        #
         # file preview
-        #
-
         file_preview_title = ui.markdown("### 文件预览")
-
         file_viewer = ui.markdown("...").classes("w-full")
-
         file_viewer.style(
             """
             border: 1px solid #3a3a3a;
@@ -583,10 +547,7 @@ with (
             """
         )
 
-        #
         # debug
-        #
-
         debug_panel = ui.html(
             """
             <div class="debug-panel">
