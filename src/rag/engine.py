@@ -11,7 +11,6 @@ from llama_index.core import (
     StorageContext,
     load_index_from_storage,
 )
-
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.llms.openai_like import OpenAILike
 from llama_index.postprocessor.flag_embedding_reranker import FlagEmbeddingReranker
@@ -41,11 +40,59 @@ def hybrid_tokenizer(text):
     return [t.strip() for t in tokens if t.strip() and len(t.strip()) > 1]
 
 
+class QuestionNavigator:
+    def __init__(self):
+        self.llm = None
+
+    def _rule_filter(self, question: str):
+        q = question.strip().lower()
+
+        trivial_words = {
+            "hi",
+            "hello",
+            "hey",
+            "你好",
+            "你好吗",
+            "您好",
+            "谢谢",
+            "thanks",
+            "thank you",
+            "bye",
+            "再见",
+            "?",
+            "？",
+        }
+
+        if not q:
+            return "INVALID"
+
+        if q in trivial_words:
+            return "CHAT"
+
+        if len(q) <= 2:
+            return "INVALID"
+
+        return None
+
+    def classify_question(self, question: str) -> str:
+        # fast rule filter
+        result = self._rule_filter(question)
+        log(f"[FastFilter] {result}")
+        if result:
+            return result
+
+        # llm classify
+        # I'm not able to finish this with local LLM。
+        # for I can only run one big thinking model, no switch for non thinking.
+        return "RAG"
+
+
 class RagEngine:
     def __init__(self):
         log("[RAG] Initializing...")
         self._init_models()
         self.query_engine = self._build_query_engine()
+        self.navigator = QuestionNavigator()
         log("[RAG] Ready")
 
     def _init_models(self):
@@ -127,6 +174,9 @@ class RagEngine:
     def query(self, question):
 
         return self.query_engine.query(question)
+
+    def classify_question(self, question):
+        return self.navigator.classify_question(question)
 
 
 engine = RagEngine()
