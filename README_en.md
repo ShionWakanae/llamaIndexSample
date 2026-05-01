@@ -106,9 +106,9 @@ python .\src\rag_cli.py 'Your question'
 python .\src\reg_webui.py
 ```
 
-2. Open your browser and visit `http://127.0.0.1:7860/` (it looks terrible, honestly) to query the knowledge base.  
+1. Open your browser and visit `http://127.0.0.1:7860/` to query the knowledge base.  
 Enter your question in the textbox at the lower left. The upper left area displays the chat history.  
-The upper right section optionally displays the reference file from the latest conversation and previews the `.md` file content.  
+CLick on a reference file from the conversation and previews the `.md` file content.  
 The lower right section shows a small amount of debugging information, including timing and retrieval hits. Use the CLI for more detailed diagnostics.
 
 ![](res/webui.webp)
