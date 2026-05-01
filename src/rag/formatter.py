@@ -122,6 +122,7 @@ def build_debug_html(debug_data):
             </div>
 
             <div style="margin-top:4px; color:#94a3b8;">
+                caption:
                 {item.get("header_path")}
             </div>
 

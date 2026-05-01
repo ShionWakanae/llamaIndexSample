@@ -44,7 +44,7 @@ ui.add_head_html(
 
     body {
         overflow: hidden;
-        background: #151515;
+        background: #212121;
         color: #e0e0e0;
     }
 
@@ -228,6 +228,7 @@ with (
                 """
             flex: 1;
             overflow-y: auto;
+            background: #121212;
 
             border: 1px solid #3a3a3a;
             border-radius: 8px;
@@ -563,16 +564,15 @@ with (
             border: 1px solid #3a3a3a;
             border-radius: 8px;
             padding: 12px;
-            height: 50vh;
+            height: 51vh;
             overflow-y: auto;
+            background: #121212;
             """
         )
 
         #
         # debug
         #
-
-        ui.markdown("### 调试信息")
 
         debug_panel = ui.html(
             """
@@ -588,9 +588,10 @@ with (
             border: 1px solid #3a3a3a;
             border-radius: 8px;
             padding: 12px;
-            height: 30vh;
+            height: 36vh;
             overflow-y: auto;
             font-size: 12px;
+            background: #121212;
             """
         )
 
