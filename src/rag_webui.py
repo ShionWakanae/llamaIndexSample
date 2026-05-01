@@ -182,6 +182,24 @@ ui.add_head_html(
         display: block;
     }
 
+    .loading-text {
+        animation: pulse 1.2s infinite;
+    }
+
+    @keyframes pulse {
+
+        0% {
+            opacity: 0.35;
+        }
+
+        50% {
+            opacity: 1;
+        }
+
+        100% {
+            opacity: 0.35;
+        }
+    }
     </style>
     """
 )
@@ -258,10 +276,6 @@ with (
                 .classes("flex-1")
             )
 
-            #
-            # send logic
-            #
-
             async def send_message():
 
                 try:
@@ -275,15 +289,11 @@ with (
                     input_box.disable()
                     log(f"Question: {message}")
 
-                    #
-                    # user message
-                    #
-
+                    # messages
                     with chat_scroll:
                         #
                         # 用户消息：右边
                         #
-
                         with ui.row().classes("w-full justify-end"):
                             with ui.chat_message(
                                 sent=True,
@@ -298,8 +308,7 @@ with (
                         #
                         # assistant
                         #
-
-                        with ui.row().classes("w-full justify-start"):
+                        with ui.column().classes("w-full items-start"):
                             with ui.chat_message(
                                 sent=False,
                                 name="Assistant",
@@ -310,7 +319,7 @@ with (
                             ):
                                 assistant_message = ui.html(
                                     """
-                                    <div class="streaming-text">
+                                    <div class="streaming-text loading-text">
                                         正在检索资料...
                                     </div>
                                     """
@@ -319,7 +328,7 @@ with (
                                     width: 100%;
                                     """
                                 )
-                            sources_container = ui.element("div")
+                            sources_container = ui.row().classes("gap-2 mt-0")
 
                     # reset status
                     file_preview_title.content = "### 文件预览"
