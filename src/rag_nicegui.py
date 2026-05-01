@@ -3,6 +3,8 @@ import datetime
 import threading
 from pathlib import Path
 from queue import Queue
+import markdown
+import html
 
 from nicegui import ui
 from rich import print
@@ -95,12 +97,9 @@ ui.add_head_html(
     /*
         输入框
     */
-
     .q-field__control {
         background: #1b1b1b !important;
-
         border: 1px solid #3a3a3a !important;
-
         color: #e0e0e0 !important;
     }
 
@@ -108,7 +107,6 @@ ui.add_head_html(
     /*
         聊天气泡
     */
-
     .q-message-text {
         background: #222222 !important;
         color: #eaeaea !important;
@@ -120,30 +118,35 @@ ui.add_head_html(
     /*
         用户消息
     */
-
     .q-message-sent .q-message-text {
-
-        background: #1f2f45 !important;
+        color: #eaeaea !important;
+        background: #1f3f65 !important;
     }
-
+    .q-message-sent .q-message-text * {
+        color: #eaeaea !important;
+    }
 
     /*
         assistant消息
     */
-
     .q-message-received .q-message-text {
 
         background: #222222 !important;
+
+        color: #dddddd !important;
+    }
+
+    .q-message-received .q-message-text * {
+
+        color: #dddddd !important;
     }
 
 
     /*
         markdown区域
     */
-
     .markdown,
     .q-markdown {
-
         color: #dddddd !important;
     }
 
@@ -171,17 +174,11 @@ ui.add_head_html(
         inline code
     */
     code {
-
         background: #2b2b2b !important;
-
         color: #ffcb6b !important;
-
         padding: 2px 6px;
-
         border-radius: 4px;
-
         font-family: Consolas, monospace;
-
         font-size: 0.95em;
     }
 
@@ -189,17 +186,12 @@ ui.add_head_html(
     /*
         code block
     */
-
     pre {
 
         background: #1a1a1a !important;
-
         border: 1px solid #3a3a3a;
-
         border-radius: 8px;
-
         padding: 12px;
-
         overflow-x: auto;
     }
 
@@ -209,12 +201,25 @@ ui.add_head_html(
     */
 
     pre code {
-
         background: transparent !important;
-
         color: #dcdcdc !important;
-
         padding: 0;
+    }
+
+    .streaming-text {
+        width: 100%;
+        text-align: left !important;
+        white-space: pre-wrap;
+        line-height: 1.6;
+        color: #dddddd;
+        display: block;
+    }
+    .q-message-text-content {
+        width: 100%;
+    }
+    .final-markdown {
+        line-height: 1.6;
+        color: #dddddd;
     }
     </style>
     """
@@ -343,9 +348,13 @@ with (
                             max-width: 80%;
                             """
                         ):
-                            assistant_message = ui.markdown(
-                                "_正在检索资料..._"
-                            ).classes("assistant-markdown")
+                            assistant_message = ui.html(
+                                """
+                                <div class="streaming-text">
+                                    正在检索资料...
+                                </div>
+                                """
+                            ).classes("w-full")
 
                 #
                 # reset side panel
@@ -411,11 +420,15 @@ with (
                             assistant_message.content = ""
                         partial_text += event["content"]
 
-                        #
-                        # markdown 正确处理换行
-                        #
+                        escaped = html.escape(partial_text)
 
-                        assistant_message.content = partial_text
+                        escaped = escaped.replace("\n", "<br>")
+
+                        assistant_message.content = f"""
+                        <div class="streaming-text">
+                        {escaped}
+                        </div>
+                        """
 
                         assistant_message.update()
 
@@ -463,7 +476,6 @@ with (
                 ) = build_reference_files(source_nodes)
 
                 CURRENT_FILES.clear()
-
                 CURRENT_FILES.update(file_map)
 
                 if ref_text:
@@ -473,16 +485,27 @@ with (
                 # final update
                 #
 
-                assistant_message.content = partial_text
+                rendered_html = markdown.markdown(
+                    partial_text,
+                    extensions=[
+                        "fenced_code",
+                        "tables",
+                        "nl2br",
+                        "sane_lists",
+                    ],
+                )
 
+                assistant_message.content = f"""
+                <div class="final-markdown">
+                    {rendered_html}
+                </div>
+                """
                 assistant_message.update()
 
                 #
                 # dropdown
                 #
-
                 file_selector.options = list(file_map.keys())
-
                 file_selector.update()
 
                 #
