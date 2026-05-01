@@ -3,7 +3,7 @@ def build_reference_files(source_nodes):
     refs = []
     files = {}
 
-    seen = set()
+    # seen = set()
 
     for node in source_nodes:
         file_name = node.metadata.get(
@@ -26,10 +26,9 @@ def build_reference_files(source_nodes):
             "-1",
         )
 
-        if file_path in seen:
-            continue
-
-        seen.add(file_path)
+        # if file_path in seen:
+        #     continue
+        # seen.add(file_path)
 
         ref_line = f"- `{file_name}`"
         if line_start >= 0 and line_end > line_start:

@@ -86,7 +86,6 @@ ui.add_head_html(
     .q-textarea,
     .q-input,
     .q-card,
-    .q-message-text,
     .border-panel {
         background: #1b1b1b !important;
         border: 1px solid #3a3a3a !important;
@@ -126,6 +125,7 @@ ui.add_head_html(
         color: #eaeaea !important;
     }
 
+    
     /*
         assistant消息
     */
@@ -133,19 +133,10 @@ ui.add_head_html(
         background: #222222 !important;
         color: #dddddd !important;
     }
-
     .q-message-received .q-message-text * {
         color: #dddddd !important;
     }
 
-
-    /*
-        markdown区域
-    */
-    .markdown,
-    .q-markdown {
-        color: #dddddd !important;
-    }
 
 
     /*
@@ -212,10 +203,6 @@ ui.add_head_html(
         display: block;
     }
 
-    .final-markdown {
-        line-height: 1.6;
-        color: #dddddd;
-    }
     </style>
     """
 )
@@ -355,6 +342,8 @@ with (
                                 """
                             )
 
+                            sources_container = ui.row().classes("gap-2 mt-3")
+
                 #
                 # reset side panel
                 #
@@ -478,7 +467,7 @@ with (
                 CURRENT_FILES.update(file_map)
 
                 if ref_text:
-                    partial_text += f"\n\n---\n#### 参考文件\n{ref_text}"
+                    partial_text += f"\n  \n---  \n##### 参考文件\n{ref_text}"
 
                 #
                 # final update
@@ -500,6 +489,30 @@ with (
                 </div>
                 """
                 assistant_message.update()
+                #
+                # source buttons
+                #
+
+                shown_files = set()
+
+                with sources_container:
+                    for file_name in file_map.keys():
+                        if file_name in shown_files:
+                            continue
+
+                        shown_files.add(file_name)
+
+                        ui.button(
+                            file_name,
+                            on_click=lambda f=file_name: (
+                                file_selector.set_value(f),
+                                update_file_preview(),
+                            ),
+                        ).props("flat dense").style(
+                            """
+                            font-size: 11px;
+                            """
+                        )
 
                 #
                 # dropdown
