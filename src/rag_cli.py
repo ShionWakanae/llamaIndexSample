@@ -47,7 +47,7 @@ print()
 #     print(node.text[:300])
 
 
-log("Answer:")
+log("Thinking...")
 print()
 spinner = AsyncSpinner()
 with Live(Text("....", style="yellow"), refresh_per_second=2) as live:
@@ -55,6 +55,7 @@ with Live(Text("....", style="yellow"), refresh_per_second=2) as live:
     spinner.start()
     first = True
     source_nodes = []
+    accumulated = ""
     for event in service.stream_answer(quest_str):
         if event["type"] == "token":
             chunk = event["content"]
@@ -63,14 +64,17 @@ with Live(Text("....", style="yellow"), refresh_per_second=2) as live:
                     spinner.stop()
                     live.stop()
                     first = False
-                print(
-                    f"[bold bright_magenta]{chunk}[/]",
-                    end="",
-                    flush=True,
-                )
+                    log("\rAnswer:")
+                    print()
+                accumulated += chunk
+                # 遇到句号、感叹号、问号或换行时输出
+                if "\n" in accumulated:
+                    print(f"[bold bright_magenta]{accumulated}[/]", end="", flush=True)
+                    accumulated = ""
         elif event["type"] == "sources":
             source_nodes = event["content"]
-
+    if accumulated:
+        print(f"[bold bright_magenta]{accumulated}[/]", end="", flush=True)
     if first:
         spinner.stop()
         live.stop()

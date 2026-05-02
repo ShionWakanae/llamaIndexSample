@@ -110,7 +110,7 @@ ui.add_head_html(
         background: transparent !important;
         box-shadow: none !important;
         /* 画新的三角形 */
-        border-left: 8px solid #1f3f65 !important;
+        border-left: 4px solid #1f3f65 !important;
         border-top: 6px solid transparent !important;
         border-bottom: 6px solid transparent !important;
     }
@@ -207,7 +207,7 @@ ui.add_head_html(
         display: block;
     }
     .loading-text {
-        animation: pulse 1.2s infinite;
+        animation: pulse 1.5s infinite;
     }
 
     @keyframes pulse {
@@ -314,6 +314,7 @@ with (
                             with ui.chat_message(
                                 sent=True,
                                 name="human user",
+                                stamp=f"\U0001f550{datetime.datetime.now().strftime('%H:%M:%S')}",
                             ).style(
                                 """
                                 max-width: 80%;
@@ -331,10 +332,20 @@ with (
                                 max-width: 80%;
                                 """
                             ):
+                                wait_html = markdown.markdown(
+                                    "\U000023f3正在检索资料...",
+                                    extensions=[
+                                        "fenced_code",
+                                        "tables",
+                                        "nl2br",
+                                        "sane_lists",
+                                    ],
+                                )
+
                                 assistant_message = ui.html(
-                                    """
+                                    f"""
                                     <div class="streaming-text loading-text">
-                                        正在检索资料...
+                                        {wait_html}
                                     </div>
                                     """
                                 ).style(
@@ -379,6 +390,7 @@ with (
                     ).start()
 
                     # consume
+                    accumulated = ""
                     while True:
                         event = await asyncio.to_thread(queue.get)
                         if event is None:
@@ -389,16 +401,18 @@ with (
                             got_answer = True
                             if partial_text == "":
                                 assistant_message.content = ""
-                            partial_text += event["content"]
-                            escaped = html.escape(partial_text)
-                            escaped = escaped.replace("\n", "<br>")
-                            assistant_message.content = f"""
-                            <div class="streaming-text">
-                            {escaped}
-                            </div>
-                            """
-
-                            assistant_message.update()
+                            accumulated += event["content"]
+                            if "\n" in accumulated:
+                                partial_text += accumulated
+                                accumulated = ""
+                                escaped = html.escape(partial_text)
+                                escaped = escaped.replace("\n", "<br>")
+                                assistant_message.content = f"""
+                                <div class="streaming-text">
+                                {escaped}
+                                </div>
+                                """
+                                assistant_message.update()
 
                         # sources
                         elif event["type"] == "sources":
@@ -414,6 +428,9 @@ with (
                         elif event["type"] == "status":
                             got_answer = event["got_answer"]
 
+                    if accumulated:
+                        partial_text += accumulated
+
                     log("Answer completed")
 
                     # fallback
@@ -428,24 +445,6 @@ with (
 
                     # if ref_text:
                     #     partial_text += f"\n  \n---  \n##### 参考文件\n{ref_text}"
-
-                    # final update
-                    rendered_html = markdown.markdown(
-                        partial_text,
-                        extensions=[
-                            "fenced_code",
-                            "tables",
-                            "nl2br",
-                            "sane_lists",
-                        ],
-                    )
-
-                    assistant_message.content = f"""
-                    <div class="final-markdown">
-                        {rendered_html}
-                    </div>
-                    """
-                    assistant_message.update()
 
                     # source buttons
                     should_show_sources = (
@@ -463,6 +462,23 @@ with (
                             "无法回答",
                         ]
                     )
+                    # final update
+                    partial_text += f"<br><br>`\U0001f550{datetime.datetime.now().strftime('%H:%M:%S')}`"
+                    rendered_html = markdown.markdown(
+                        partial_text,
+                        extensions=[
+                            "fenced_code",
+                            "tables",
+                            "nl2br",
+                            "sane_lists",
+                        ],
+                    )
+                    assistant_message.content = f"""
+                    <div class="final-markdown">
+                        {rendered_html}
+                    </div>"""
+                    assistant_message.update()
+
                     if should_show_sources:
                         shown_files = set()
                         with sources_container:
