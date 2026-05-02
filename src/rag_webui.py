@@ -19,20 +19,51 @@ def log(msg):
 
 
 def read_file_by_path(path):
-
     if not path:
         return "文件不存在！"
 
     try:
-        with open(
-            path,
-            "r",
-            encoding="utf-8",
-        ) as f:
+        with open(path, "r", encoding="utf-8") as f:
             return f.read()
 
     except Exception as e:
         return f"读取失败:\n\n{e}"
+
+
+def show_file_preview(name, path):
+    content = read_file_by_path(path)
+    with ui.dialog().props("maximized") as dialog:  # maybe `persistent` ?
+        with ui.card().style(
+            """
+width: 1200px;
+max-width: 90vw;
+
+height: 900px;
+max-height: 90vh;
+"""
+        ):
+            ui.markdown(f"### 《{name}》")
+
+            ui.markdown(content).classes("w-full").style(
+                """
+                flex: 1;
+                overflow-y: auto;
+                background: #121212;
+                border: 1px solid #3a3a3a;
+                border-radius: 8px;
+                padding: 12px;
+                """
+            )
+            with ui.row().classes("w-full justify-center"):
+                ui.button(
+                    "关闭",
+                    on_click=dialog.close,
+                ).style(
+                    """
+                    width: 160px;
+                    """
+                )
+    dialog.open()
 
 
 def auto_scroll_chat():
@@ -67,7 +98,7 @@ ui.add_head_html(
     }
 
     .debug-panel {
-        font-size: 10px;
+        font-size: 11px;
     }
 
     /*
@@ -256,7 +287,7 @@ with (
     .style(
         """
     height: 100vh;
-    max-width: 1680px;
+    max-width: 1440px;
     margin: 0 auto;
     padding: 12px;
     gap: 12px;
@@ -267,7 +298,7 @@ with (
     # left
     with ui.column().style(
         """
-        width: 55%;
+        width: 70%;
         height: 100%;
         overflow: hidden;
         """
@@ -371,12 +402,6 @@ with (
                             auto_scroll_chat()
 
                     # reset status
-                    file_preview_title.content = "### 文件预览"
-                    file_preview_title.update()
-
-                    file_viewer.content = "..."
-                    file_viewer.update()
-
                     debug_panel.content = """
                     <div class="debug-panel">
                         waiting for data...
@@ -510,24 +535,9 @@ with (
                                         file_name,
                                         icon="description",
                                         on_click=lambda n=file_name, p=file_path: (
-                                            setattr(
-                                                file_preview_title,
-                                                "content",
-                                                f"### 《{n}》",
-                                            ),
-                                            file_preview_title.update(),
-                                            setattr(
-                                                file_viewer,
-                                                "content",
-                                                read_file_by_path(p),
-                                            ),
-                                            file_viewer.update(),
+                                            show_file_preview(n, p)
                                         ),
-                                    ).props("flat dense").style(
-                                        """
-                                        font-size: 11px;
-                                        """
-                                    )
+                                    ).props("flat dense")
 
                     auto_scroll_chat()
                 finally:
@@ -547,26 +557,12 @@ with (
     # right
     with ui.column().style(
         """
-        width: 45%;
+        width: 30%;
         height: 100%;
         overflow: hidden;
         """
     ):
-        # ui.markdown("### 额外信息")
-        # file preview
-        file_preview_title = ui.markdown("### 文件预览")
-        file_viewer = ui.markdown("...").classes("w-full")
-        file_viewer.style(
-            """
-            border: 1px solid #3a3a3a;
-            border-radius: 8px;
-            padding: 12px;
-            height: 51vh;
-            overflow-y: auto;
-            background: #121212;
-            """
-        )
-
+        ui.markdown("### 调试信息")
         # debug
         debug_panel = ui.html(
             """
@@ -582,7 +578,7 @@ with (
             border: 1px solid #3a3a3a;
             border-radius: 8px;
             padding: 12px;
-            height: 36vh;
+            height: 89vh;
             overflow-y: auto;
             font-size: 12px;
             background: #121212;
