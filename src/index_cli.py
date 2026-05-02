@@ -35,6 +35,8 @@ def print_metadata_stats(final_nodes):
         if "chunk_type" in meta:
             stats["chunk_type"][meta["chunk_type"]] += 1
 
+        if "block_type" in meta:
+            stats["block_type"][meta["block_type"]] += 1
         #
         # boolean metadata
         #
