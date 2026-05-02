@@ -4,6 +4,7 @@ import threading
 from queue import Queue
 import markdown
 import html
+import re
 
 from nicegui import ui
 from rich import print
@@ -32,18 +33,32 @@ def read_file_by_path(path):
 
 def show_file_preview(name, path):
     content = read_file_by_path(path)
-    with ui.dialog().props("maximized") as dialog:  # maybe `persistent` ?
+    with ui.dialog().props("maximized persistent") as dialog:
         with ui.card().style(
             """
-width: 1200px;
-max-width: 90vw;
+            width: 1200px;
+            max-width: 90vw;
 
-height: 900px;
-max-height: 90vh;
-"""
+            height: 900px;
+            max-height: 90vh;
+
+            position: relative;
+            """
         ):
-            ui.markdown(f"### 《{name}》")
+            # 右上角关闭按钮
+            ui.button(
+                icon="close",
+                on_click=dialog.close,
+            ).props("flat round dense").style(
+                """
+                position: absolute;
+                top: 8px;
+                right: 8px;
+                z-index: 10;
+                """
+            )
 
+            ui.markdown(f"### 《{name}》")
             ui.markdown(content).classes("w-full").style(
                 """
                 flex: 1;
@@ -54,6 +69,7 @@ max-height: 90vh;
                 padding: 12px;
                 """
             )
+
             with ui.row().classes("w-full justify-center"):
                 ui.button(
                     "关闭",
@@ -63,7 +79,24 @@ max-height: 90vh;
                     width: 160px;
                     """
                 )
+
     dialog.open()
+
+
+debug_panel_shown = False
+
+
+def hide_debug_panel():
+    global debug_panel_shown
+    right_column.style(
+        """
+        width: 30%;
+        height: 100%;
+        overflow: hidden;
+        display: none;
+        """
+    )
+    debug_panel_shown = False
 
 
 def auto_scroll_chat():
@@ -86,7 +119,6 @@ def auto_scroll_chat():
 ui.add_head_html(
     """
     <style>
-
     body {
         overflow: hidden;
         background: #212121;
@@ -98,7 +130,7 @@ ui.add_head_html(
     }
 
     .debug-panel {
-        font-size: 11px;
+        font-size: 12px;
     }
 
     /*
@@ -133,16 +165,17 @@ ui.add_head_html(
     .q-message-text {
         border-radius: 14px;
         line-height: 1.6;
+        font-size: 16px;
     }
 
 
     /*
-        用户消息
+        用户消息 1f553f
     */
     .q-message-sent .q-message-text {
         position: relative;
         color: #eaeaea !important;
-        background: #1f3f65 !important;
+        background: #1f553f !important;
     }
     .q-message-sent .q-message-text::before {
         /* 隐藏原来的 before 内容 */
@@ -155,7 +188,7 @@ ui.add_head_html(
         background: transparent !important;
         box-shadow: none !important;
         /* 画新的三角形 */
-        border-left: 4px solid #1f3f65 !important;
+        border-left: 4px solid #1f553f !important;
         border-top: 6px solid transparent !important;
         border-bottom: 6px solid transparent !important;
     }
@@ -169,7 +202,7 @@ ui.add_head_html(
     */
     .q-message-received .q-message-text {
         position: relative;
-        background: #222222 !important;
+        background: #1f3f65 !important;
         color: #dddddd !important;
     }
     .q-message-received .q-message-text::before {
@@ -183,7 +216,7 @@ ui.add_head_html(
         background: transparent !important;
         box-shadow: none !important;
         /* 画向左的三角形 */
-        border-right: 8px solid #222222 !important;
+        border-right: 8px solid #1f3f65 !important;
         border-top: 6px solid transparent !important;
         border-bottom: 6px solid transparent !important;
     }
@@ -281,6 +314,7 @@ ui.colors(
     dark="#111111",
 )
 
+
 with (
     ui.row()
     .classes("w-full no-wrap")
@@ -296,13 +330,14 @@ with (
     )
 ):
     # left
-    with ui.column().style(
+    left_column = ui.column().style(
         """
-        width: 70%;
-        height: 100%;
-        overflow: hidden;
-        """
-    ):
+    flex: 1;
+    height: 100%;
+    overflow: hidden;
+    """
+    )
+    with left_column:
         ui.markdown("### 企业知识库问答")
         # chat area
         chat_scroll = (
@@ -358,7 +393,7 @@ with (
                         with ui.row().classes("w-full justify-end"):
                             with ui.chat_message(
                                 sent=True,
-                                name="human user",
+                                name="用户\U0001f464",
                                 stamp=f"\U0001f550{datetime.datetime.now().strftime('%H:%M:%S')}",
                             ).style(
                                 """
@@ -371,14 +406,14 @@ with (
                         with ui.column().classes("w-full items-start"):
                             with ui.chat_message(
                                 sent=False,
-                                name="Assistant",
+                                name="\U0001f916智能助理",
                             ).style(
                                 """
                                 max-width: 80%;
                                 """
                             ):
                                 wait_html = markdown.markdown(
-                                    "\U000023f3正在检索资料...",
+                                    "\U000023f3正在检索资料，请稍候……",
                                     extensions=[
                                         "fenced_code",
                                         "tables",
@@ -462,6 +497,26 @@ with (
 
                         # debug
                         elif event["type"] == "debug":
+                            global debug_panel_shown
+                            if not debug_panel_shown:
+                                right_column.style(
+                                    """
+                                    width: 30%;
+                                    height: 100%;
+                                    overflow: hidden;
+                                    display: block;
+                                    """
+                                )
+
+                                left_column.style(
+                                    """
+                                    width: 70%;
+                                    height: 100%;
+                                    overflow: hidden;
+                                    """
+                                )
+                                debug_panel_shown = True
+
                             debug_html = build_debug_html(event["content"])
                             debug_panel.content = debug_html
                             debug_panel.update()
@@ -506,8 +561,13 @@ with (
                     )
                     # final update
                     partial_text += f"<br><br>`\U0001f550{datetime.datetime.now().strftime('%H:%M:%S')}`"
-                    rendered_html = markdown.markdown(
+                    final_text = re.sub(
+                        r"\n\s*\n",
+                        "\n<br>\n",
                         partial_text,
+                    )
+                    rendered_html = markdown.markdown(
+                        final_text,
                         extensions=[
                             "fenced_code",
                             "tables",
@@ -555,14 +615,31 @@ with (
             )
 
     # right
-    with ui.column().style(
+    right_column = ui.column().style(
         """
-        width: 30%;
-        height: 100%;
-        overflow: hidden;
-        """
-    ):
-        ui.markdown("### 调试信息")
+    width: 30%;
+    height: 100%;
+    overflow: hidden;
+    display: none;
+    """
+    )
+
+    with right_column:
+        with (
+            ui.row()
+            .classes("w-full items-center justify-between")
+            .style(
+                """
+    height: 76px;
+    min-height: 76px;
+    """
+            )
+        ):
+            ui.markdown("### 调试信息")
+            ui.button(
+                icon="close",
+                on_click=hide_debug_panel,
+            ).props("flat round dense")
         # debug
         debug_panel = ui.html(
             """
