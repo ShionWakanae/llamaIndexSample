@@ -47,6 +47,10 @@ class MarkdownHeadingAwareParser:
 
         all_nodes = []
 
+        # node length statistics
+        max_node_len = 0
+        min_node_len = None
+
         for doc in documents:
             text = doc.text or ""
             nodes = self._parse_document(
@@ -54,11 +58,23 @@ class MarkdownHeadingAwareParser:
                 metadata=doc.metadata,
             )
 
+            # update node length statistics
+            for node in nodes:
+                node_len = len(node.text)
+
+                if node_len > max_node_len:
+                    max_node_len = node_len
+
+                if min_node_len is None or node_len < min_node_len:
+                    min_node_len = node_len
+
             all_nodes.extend(nodes)
 
-        #
+        # fallback when no nodes exist
+        if min_node_len is None:
+            min_node_len = 0
+
         # prev / next relation
-        #
         if self.include_prev_next_rel:
             for i, node in enumerate(all_nodes):
                 if i > 0:
@@ -67,7 +83,7 @@ class MarkdownHeadingAwareParser:
                 if i < len(all_nodes) - 1:
                     node.relationships["next"] = all_nodes[i + 1].node_id
 
-        return all_nodes
+        return all_nodes, max_node_len, min_node_len
 
     def _parse_document(self, text: str, metadata: dict):
         lines = text.splitlines()
