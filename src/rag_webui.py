@@ -35,9 +35,23 @@ def read_file_by_path(path):
         return f"读取失败:\n\n{e}"
 
 
-#
+def auto_scroll_chat():
+    ui.run_javascript(
+        """
+        const area =
+        document.querySelector(
+            '.chat-area'
+        );
+
+        if (area) {
+            area.scrollTop =
+            area.scrollHeight;
+        }
+        """
+    )
+
+
 # page
-#
 ui.add_head_html(
     """
     <style>
@@ -354,6 +368,7 @@ with (
                                     """
                                 )
                             sources_container = ui.row().classes("gap-2 mt-0")
+                            auto_scroll_chat()
 
                     # reset status
                     file_preview_title.content = "### 文件预览"
@@ -413,6 +428,8 @@ with (
                                 </div>
                                 """
                                 assistant_message.update()
+                                # auto scroll
+                                auto_scroll_chat()
 
                         # sources
                         elif event["type"] == "sources":
@@ -512,20 +529,7 @@ with (
                                         """
                                     )
 
-                        # auto scroll
-                        ui.run_javascript(
-                            """
-                            const area =
-                            document.querySelector(
-                                '.chat-area'
-                            );
-
-                            if (area) {
-                                area.scrollTop =
-                                area.scrollHeight;
-                            }
-                            """
-                        )
+                    auto_scroll_chat()
                 finally:
                     send_button.enable()
                     input_box.enable()
