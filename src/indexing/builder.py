@@ -2,8 +2,8 @@ from llama_index.core import SimpleDirectoryReader
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core.schema import TextNode
 from parser.MarkdownHeadingAwareParser import MarkdownHeadingAwareParser
+from parser.MarkdownContentAwareParser import MarkdownContentAwareParser
 from indexing.metadata import enrich_metadata
-
 
 global_chunk_size = 1020
 global_chunk_overlap = 80
@@ -15,24 +15,220 @@ class IndexBuilder:
             chunk_size=global_chunk_size,
             chunk_overlap=global_chunk_overlap,
         )
-        self.markdown_parser = MarkdownHeadingAwareParser(
+        self.markdown_heading_parser = MarkdownHeadingAwareParser(
             include_metadata=True,
+            include_prev_next_rel=True,
+        )
+        self.markdown_content_parser = MarkdownContentAwareParser(
+            chunk_size=global_chunk_size,
             include_prev_next_rel=True,
         )
         self.debug_mode = False
 
+    def split_table_node(
+        self,
+        node,
+        max_chunk_size: int = 2000,
+        tolerance: int = 300,
+    ):
+        """
+        Split markdown table node by chunk size.
+
+        Features:
+        - preserve header
+        - preserve prefix content
+        - dynamic row grouping
+        - preserve metadata
+        - update line_start / line_end
+        """
+
+        text = node.text or ""
+
+        lines = text.splitlines()
+
+        if len(lines) < 3:
+            return [node]
+
+        #
+        # locate separator line
+        #
+        separator_idx = None
+
+        for i, line in enumerate(lines):
+            stripped = line.strip()
+
+            if "|" in stripped and "-" in stripped:
+                separator_idx = i
+                break
+
+        if (
+            separator_idx is None
+            or separator_idx == 0
+            or separator_idx >= len(lines) - 1
+        ):
+            return [node]
+
+        header_idx = separator_idx - 1
+
+        prefix_lines = lines[:header_idx]
+
+        header_line = lines[header_idx]
+
+        separator_line = lines[separator_idx]
+
+        data_lines = lines[separator_idx + 1 :]
+
+        if not data_lines:
+            return [node]
+
+        metadata = dict(node.metadata)
+
+        base_line_start = metadata.get(
+            "line_start",
+            0,
+        )
+
+        result_nodes = []
+
+        #
+        # fixed part size
+        #
+        fixed_lines = [
+            *prefix_lines,
+            header_line,
+            separator_line,
+        ]
+
+        fixed_text = "\n".join(fixed_lines)
+
+        current_rows = []
+
+        current_start_idx = 0
+
+        def flush_rows(end_idx):
+
+            nonlocal current_rows
+            nonlocal current_start_idx
+
+            if not current_rows:
+                return
+
+            chunk_lines = [
+                *fixed_lines,
+                *current_rows,
+            ]
+
+            chunk_text = "\n".join(chunk_lines)
+
+            first_data_line = separator_idx + 1 + current_start_idx
+
+            last_data_line = separator_idx + end_idx
+
+            new_metadata = dict(metadata)
+
+            new_metadata["line_start"] = base_line_start
+
+            new_metadata["line_end"] = base_line_start + last_data_line
+
+            new_metadata["table_row_start"] = current_start_idx
+
+            new_metadata["table_row_end"] = end_idx - 1
+
+            result_nodes.append(
+                TextNode(
+                    text=chunk_text,
+                    metadata=new_metadata,
+                )
+            )
+
+            current_rows = []
+
+        #
+        # dynamic split
+        #
+        for idx, row in enumerate(data_lines):
+            tentative_rows = current_rows + [row]
+
+            tentative_text = "\n".join(
+                [
+                    fixed_text,
+                    *tentative_rows,
+                ]
+            )
+
+            #
+            # soft limit
+            #
+            if current_rows and len(tentative_text) > max_chunk_size + tolerance:
+                flush_rows(idx)
+
+                current_start_idx = idx
+
+                current_rows = [row]
+
+            else:
+                current_rows.append(row)
+
+        #
+        # final flush
+        #
+        flush_rows(len(data_lines))
+
+        return result_nodes
+
     def build_nodes(self, doc_path, debug_mode: bool):
         self.debug_mode = debug_mode
         documents = self._load_documents(doc_path)
-        markdown_nodes = self._build_markdown_nodes(documents)
+
+        # step 1 markdown header
+        markdown_heading_nodes, max_node_len, min_node_len = (
+            self._build_markdown_heading_nodes(documents)
+        )
         if debug_mode:
-            print(f"markdown nodes:{len(markdown_nodes)}")
-        candidate_nodes = self._build_candidate_nodes(markdown_nodes)
+            print(
+                f"markdown heading nodes:{len(markdown_heading_nodes)}, len:{min_node_len} to {max_node_len}"
+            )
+
+        # step 2 markdown content
+        markdown_content_nodes, max_node_len, min_node_len = (
+            self._build_markdown_content_nodes(markdown_heading_nodes)
+        )
         if debug_mode:
-            print(f"candidate nodes:{len(candidate_nodes)}")
+            print(
+                f"markdown content nodes:{len(markdown_content_nodes)}, len:{min_node_len} to {max_node_len}"
+            )
+
+        # step 2 table content split
+        candidate_nodes = self._build_candidate_nodes(markdown_content_nodes)
+        if debug_mode:
+            max_node_len = 0
+            min_node_len = None
+
+            for node in candidate_nodes:
+                node_len = len(node.text)
+                if node_len > max_node_len:
+                    max_node_len = node_len
+                if min_node_len is None or node_len < min_node_len:
+                    min_node_len = node_len
+            print(
+                f"candidate nodes:{len(candidate_nodes)}, len:{min_node_len} to {max_node_len}"
+            )
+
         final_nodes = self._merge_small_chunks(candidate_nodes)
         if debug_mode:
-            print(f"final nodes:{len(final_nodes)}")
+            max_node_len = 0
+            min_node_len = None
+
+            for node in candidate_nodes:
+                node_len = len(node.text)
+                if node_len > max_node_len:
+                    max_node_len = node_len
+                if min_node_len is None or node_len < min_node_len:
+                    min_node_len = node_len
+            print(
+                f"final nodes:{len(final_nodes)}, len:{min_node_len} to {max_node_len}"
+            )
+
         return final_nodes
 
     def _load_documents(self, doc_path):
@@ -63,19 +259,38 @@ class IndexBuilder:
             doc.text_resource.text = cleaned
         return documents
 
-    def _build_markdown_nodes(
+    def _build_markdown_heading_nodes(
         self,
         documents,
     ):
-        return self.markdown_parser.get_nodes_from_documents(
+        return self.markdown_heading_parser.get_nodes_from_documents(
             documents=documents,
         )
 
+    def _build_markdown_content_nodes(
+        self,
+        documents,
+    ):
+        return self.markdown_content_parser.get_nodes_from_documents(
+            nodes=documents,
+        )
+
+    # do not split now, just filter empty and enriched
     def _build_candidate_nodes(
         self,
         markdown_nodes,
     ):
         candidate_nodes = []
+
+        def append_candidate(text, metadata, header):
+            enriched_text = f"[SECTION]\n{header}\n\n[CONTENT]\n{text}"
+            candidate_nodes.append(
+                TextNode(
+                    text=enriched_text,
+                    metadata=metadata,
+                )
+            )
+
         split_count = 0
         for node in markdown_nodes:
             if self._is_title_only(node):
@@ -95,75 +310,28 @@ class IndexBuilder:
 
             # small section
             if len(node.text) < global_chunk_size + global_chunk_overlap:
-                enriched_text = f"[SECTION]\n{header}\n\n[CONTENT]\n{node.text}"
-                candidate_nodes.append(
-                    TextNode(
-                        text=enriched_text,
-                        metadata=node.metadata,
-                    )
-                )
+                append_candidate(node.text, node.metadata, header)
 
             # large section
             else:
-                split_count += 1
-                sub_nodes = self.splitter.get_nodes_from_documents([node])
-                for sub_node in sub_nodes:
-                    #
-                    # fallback hard split
-                    # if splitter failed to split huge content
-                    #
-                    if len(sub_node.text) > int(global_chunk_size * 1.5):
-                        lines = sub_node.text.splitlines()
-                        current_chunk = ""
-                        for line in lines:
-                            # keep newline
-                            candidate = (
-                                current_chunk + "\n" + line if current_chunk else line
-                            )
-
-                            # flush current chunk when size meet
-                            if len(candidate) > global_chunk_size:
-                                if current_chunk.strip():
-                                    enriched_text = (
-                                        f"[SECTION]\n{header}\n\n[CONTENT]\n"
-                                        f"{current_chunk}"
-                                    )
-                                    candidate_nodes.append(
-                                        TextNode(
-                                            text=enriched_text,
-                                            metadata=sub_node.metadata,
-                                        )
-                                    )
-                                current_chunk = line
-                            else:
-                                current_chunk = candidate
-
-                        # remaining chunk
-                        if current_chunk.strip():
-                            enriched_text = (
-                                f"[SECTION]\n{header}\n\n[CONTENT]\n{current_chunk}"
-                            )
-
-                            candidate_nodes.append(
-                                TextNode(
-                                    text=enriched_text,
-                                    metadata=sub_node.metadata,
-                                )
-                            )
-                    # normal chunk
-                    else:
-                        enriched_text = (
-                            f"[SECTION]\n{header}\n\n[CONTENT]\n{sub_node.text}"
-                        )
-                        candidate_nodes.append(
-                            TextNode(
-                                text=enriched_text,
-                                metadata=sub_node.metadata,
-                            )
-                        )
+                # Large table split
+                if (
+                    node.metadata.get(
+                        "block_type",
+                        "",
+                    )
+                    == "table"
+                ):
+                    sub_nodes = self.split_table_node(node, global_chunk_size * 2)
+                    split_count += 1
+                    for sub_node in sub_nodes:
+                        append_candidate(sub_node.text, sub_node.metadata, header)
+                # other chunk
+                else:
+                    append_candidate(node.text, node.metadata, header)
 
         if self.debug_mode:
-            print(f"== Large nodes splited:{split_count}")
+            print(f"== Large nodes split:{split_count}")
         return candidate_nodes
 
     def _merge_small_chunks(

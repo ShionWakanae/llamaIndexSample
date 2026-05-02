@@ -15,18 +15,18 @@ class MarkdownContentAwareParser:
     Features:
     - Preserve code blocks
     - Preserve markdown tables
-    - Preserve list blocks
-    - Preserve blockquotes
+    - Preserve OCR blocks
     - Preserve math blocks
-    - Split normal paragraphs by chunk_size
+    - Merge normal text intelligently
+    - Avoid over-fragmentation
     - Keep line_start / line_end updated
     """
 
     CODE_FENCE_RE = re.compile(r"^(```|~~~)")
     TABLE_RE = re.compile(r"^\s*\|.*\|\s*$")
-    LIST_RE = re.compile(r"^\s*([-*+]|\d+\.)\s+")
-    QUOTE_RE = re.compile(r"^\s*>\s?")
     MATH_BLOCK_RE = re.compile(r"^\s*\$\$\s*$")
+    OCR_START_RE = re.compile(r"^\*\[Image OCR\]")
+    OCR_END_RE = re.compile(r"^\[End OCR\]\*$")
 
     def __init__(
         self,
@@ -48,10 +48,6 @@ class MarkdownContentAwareParser:
 
             for sub_node in split_nodes:
                 node_len = len(sub_node.text)
-                if node_len <= 5:
-                    print(node.metadata)
-                    print(sub_node.text)
-                    print()
 
                 if node_len > max_node_len:
                     max_node_len = node_len
@@ -75,16 +71,24 @@ class MarkdownContentAwareParser:
                 if i < len(all_nodes) - 1:
                     node.relationships["next"] = all_nodes[i + 1].node_id
 
-        return all_nodes, max_node_len, min_node_len
+        return (
+            all_nodes,
+            max_node_len,
+            min_node_len,
+        )
 
     def _split_node(self, node):
 
         text = node.text or ""
+
         lines = text.splitlines()
 
         metadata = dict(node.metadata)
 
-        base_line_start = metadata.get("line_start", 0)
+        base_line_start = metadata.get(
+            "line_start",
+            0,
+        )
 
         blocks = self._extract_blocks(lines)
 
@@ -92,30 +96,26 @@ class MarkdownContentAwareParser:
 
         current_lines = []
         current_start = None
+        current_end = None
 
-        def flush_chunk(end_line):
+        def flush_chunk():
 
             nonlocal current_lines
             nonlocal current_start
+            nonlocal current_end
 
             content = "\n".join(current_lines).strip()
 
             if not content:
                 current_lines = []
                 current_start = None
+                current_end = None
                 return
 
             new_metadata = dict(metadata)
-
             new_metadata["line_start"] = current_start
-            new_metadata["line_end"] = end_line
-
-            #
-            # preserve header_path
-            #
-            if "header_path" in metadata:
-                new_metadata["header_path"] = metadata["header_path"]
-
+            new_metadata["line_end"] = current_end
+            new_metadata["block_type"] = "text"
             result_nodes.append(
                 TextNode(
                     text=content,
@@ -125,64 +125,75 @@ class MarkdownContentAwareParser:
 
             current_lines = []
             current_start = None
+            current_end = None
 
         for block in blocks:
             block_text = block["text"]
             block_type = block["type"]
-
-            block_lines = block_text.splitlines()
-
             abs_start = base_line_start + block["start_line"]
-
             abs_end = base_line_start + block["end_line"]
 
             #
-            # preserve structured block
+            # structured block
             #
             if block_type in {
                 "code",
                 "table",
-                "list",
-                "quote",
                 "math",
+                "ocr",
             }:
+                #
+                # flush current text chunk
+                #
                 if current_lines:
-                    flush_chunk(abs_start - 1)
+                    flush_chunk()
+
+                structured_metadata = dict(metadata)
+                structured_metadata["line_start"] = abs_start
+                structured_metadata["line_end"] = abs_end
+                structured_metadata["block_type"] = block_type
 
                 result_nodes.append(
                     TextNode(
                         text=block_text,
-                        metadata={
-                            **metadata,
-                            "line_start": abs_start,
-                            "line_end": abs_end,
-                            "header_path": metadata.get("header_path"),
-                        },
+                        metadata=structured_metadata,
                     )
                 )
 
                 continue
 
             #
-            # normal text
+            # normal text block
             #
-            for line in block_lines:
-                tentative = "\n".join(current_lines + [line])
+            block_lines = block_text.splitlines()
 
-                if current_lines and len(tentative) > self.chunk_size:
-                    flush_chunk(abs_start - 1)
+            for idx, line in enumerate(block_lines):
+                tentative_lines = current_lines + [line]
+
+                tentative_text = "\n".join(tentative_lines)
+
+                #
+                # split only when truly needed
+                #
+                if current_lines and len(tentative_text) > self.chunk_size:
+                    flush_chunk()
 
                 if current_start is None:
-                    current_start = abs_start
+                    current_start = abs_start + idx
+
+                current_end = abs_start + idx
 
                 current_lines.append(line)
 
         if current_lines:
-            flush_chunk(abs_end)
+            flush_chunk()
 
         return result_nodes
 
-    def _extract_blocks(self, lines):
+    def _extract_blocks(
+        self,
+        lines,
+    ):
 
         blocks = []
 
@@ -192,10 +203,36 @@ class MarkdownContentAwareParser:
             line = lines[i]
 
             #
-            # skip empty lines
+            # skip leading empty lines
             #
             if not line.strip():
                 i += 1
+                continue
+
+            #
+            # OCR block
+            #
+            if self.OCR_START_RE.match(line):
+                start = i
+
+                i += 1
+
+                while i < len(lines):
+                    if self.OCR_END_RE.match(lines[i]):
+                        i += 1
+                        break
+
+                    i += 1
+
+                blocks.append(
+                    {
+                        "type": "ocr",
+                        "text": "\n".join(lines[start:i]),
+                        "start_line": start,
+                        "end_line": i - 1,
+                    }
+                )
+
                 continue
 
             #
@@ -275,53 +312,7 @@ class MarkdownContentAwareParser:
                 continue
 
             #
-            # list
-            #
-            if self.LIST_RE.match(line):
-                start = i
-
-                i += 1
-
-                while i < len(lines) and (
-                    self.LIST_RE.match(lines[i]) or not lines[i].strip()
-                ):
-                    i += 1
-
-                blocks.append(
-                    {
-                        "type": "list",
-                        "text": "\n".join(lines[start:i]),
-                        "start_line": start,
-                        "end_line": i - 1,
-                    }
-                )
-
-                continue
-
-            #
-            # blockquote
-            #
-            if self.QUOTE_RE.match(line):
-                start = i
-
-                i += 1
-
-                while i < len(lines) and self.QUOTE_RE.match(lines[i]):
-                    i += 1
-
-                blocks.append(
-                    {
-                        "type": "quote",
-                        "text": "\n".join(lines[start:i]),
-                        "start_line": start,
-                        "end_line": i - 1,
-                    }
-                )
-
-                continue
-
-            #
-            # normal paragraph
+            # normal text
             #
             start = i
 
@@ -330,12 +321,13 @@ class MarkdownContentAwareParser:
             while i < len(lines):
                 current = lines[i]
 
+                #
+                # stop on structured block
+                #
                 if (
-                    not current.strip()
+                    self.OCR_START_RE.match(current)
                     or self.CODE_FENCE_RE.match(current)
                     or self.TABLE_RE.match(current)
-                    or self.LIST_RE.match(current)
-                    or self.QUOTE_RE.match(current)
                     or self.MATH_BLOCK_RE.match(current)
                 ):
                     break
@@ -344,13 +336,16 @@ class MarkdownContentAwareParser:
 
                 i += 1
 
-            blocks.append(
-                {
-                    "type": "text",
-                    "text": "\n".join(collected),
-                    "start_line": start,
-                    "end_line": i - 1,
-                }
-            )
+            text = "\n".join(collected).strip()
+
+            if text:
+                blocks.append(
+                    {
+                        "type": "text",
+                        "text": text,
+                        "start_line": start,
+                        "end_line": i - 1,
+                    }
+                )
 
         return blocks
