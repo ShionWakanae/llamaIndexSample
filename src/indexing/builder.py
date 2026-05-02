@@ -1,12 +1,15 @@
+import os
 from llama_index.core import SimpleDirectoryReader
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core.schema import TextNode
 from parser.MarkdownHeadingAwareParser import MarkdownHeadingAwareParser
 from parser.MarkdownContentAwareParser import MarkdownContentAwareParser
 from indexing.metadata import enrich_metadata
+from dotenv import load_dotenv
 
-global_chunk_size = 1020
-global_chunk_overlap = 80
+load_dotenv()
+global_chunk_size = int(os.getenv("CHUNK_SIZE", 512))
+global_chunk_overlap = int(os.getenv("CHUNK_OVERLAP", 80))
 
 
 class IndexBuilder:
@@ -322,7 +325,7 @@ class IndexBuilder:
                     )
                     == "table"
                 ):
-                    sub_nodes = self.split_table_node(node, global_chunk_size * 2)
+                    sub_nodes = self.split_table_node(node, global_chunk_size)
                     split_count += 1
                     for sub_node in sub_nodes:
                         append_candidate(sub_node.text, sub_node.metadata, header)
