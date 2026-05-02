@@ -109,7 +109,7 @@ python .\src\reg_webui.py
 点击一个`.md`参考文件，弹出对话框浏览文件内容。  
 右边是调试信息，时长和命中情况。看更详细的信息请用CLI。
 
-![](res/webui.webp)
+![](res/webui.gif)
 
 ## 视频演示
 点击打开B站视频：

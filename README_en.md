@@ -112,7 +112,7 @@ Enter your question in the input box at the bottom of the page; the chat history
 Click on a .md reference file to open a dialog box and browse its content.  
 On the right is the debugging information. For more detailed information, please use the CLI.
 
-![](res/webui.webp)
+![](res/webui.gif)
 
 ## Video Demonstrations
 Click to watch the videos on Bilibili:
