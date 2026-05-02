@@ -77,7 +77,7 @@ class QuestionNavigator:
     def classify_question(self, question: str) -> str:
         # fast rule filter
         result = self._rule_filter(question)
-        log(f"[FastFilter] {result}")
+        # log(f"[FastFilter] {result}")
         if result:
             return result
 
