@@ -21,9 +21,9 @@ I am experimenting with building applications based on LlamaIndex. Like this lit
 
 ## Project Features
 ### (1) Building the Knowledge Base
-1. Uses a custom parser (unfortunately...) to perform structure-based chunking on Markdown files according to their heading hierarchy.
-1. Large chunks produced from structural chunking are further split into fixed-size chunks.
-1. Small chunks produced from structural chunking are merged based on the size of subsequent chunks and whether they belong to the same heading.
+1. Custom heading structure parser that chunks Markdown files based on their heading hierarchy.
+1. Custom content-aware parser that chunks individual sections based on content type, including text, tables, code blocks, etc.
+1. Splitting large tables while retaining the header, and merging small chunks from parallel sections.
 1. Adds metadata to chunks and injects heading information into chunk text.
 1. Enhances metadata according to heading, content, and predefined metadata rules (still under development and not fully enabled yet...).
 1. Handles Chinese word segmentation and normalizes single carriage returns / CRLF line endings into standard line breaks.
