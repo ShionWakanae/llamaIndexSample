@@ -43,13 +43,19 @@ class RagService:
 
         llm_start = time.perf_counter()
 
-        for chunk in response.response_gen:
-            if chunk:
+        for chunk in response["stream"]:
+            token = getattr(
+                chunk,
+                "delta",
+                "",
+            )
+
+            if token:
                 got_answer = True
 
                 yield {
                     "type": "token",
-                    "content": chunk,
+                    "content": token,
                 }
 
         llm_ms = round(
@@ -61,7 +67,10 @@ class RagService:
         # source nodes
         #
 
-        source_nodes = response.source_nodes or []
+        source_nodes = response.get(
+            "source_nodes",
+            [],
+        )
 
         yield {
             "type": "sources",

@@ -16,7 +16,6 @@ from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.llms.openai_like import OpenAILike
 from llama_index.postprocessor.flag_embedding_reranker import FlagEmbeddingReranker
 from llama_index.core.retrievers import QueryFusionRetriever
-from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.retrievers.bm25 import BM25Retriever
 from llama_index.core.schema import TextNode
 # from llama_index.core.postprocessor import SimilarityPostprocessor
@@ -169,7 +168,8 @@ class RagEngine:
     def __init__(self):
         log("[RAG] Initializing...")
         self._init_models()
-        self.query_engine = self._build_query_engine()
+        # self.query_engine = self._build_query_engine()
+        self._build_pipeline()
         self.navigator = QuestionNavigator()
         log("[RAG] Ready")
 
@@ -203,7 +203,8 @@ class RagEngine:
             model_name=os.getenv("EMBEDDING_MODEL"),
         )
 
-    def _build_query_engine(self):
+    def _build_pipeline(self):
+
         log("[RAG] Loading storage...")
         storage_context = StorageContext.from_defaults(persist_dir="./storage")
         index = load_index_from_storage(storage_context)
@@ -223,7 +224,7 @@ class RagEngine:
             skip_stemming=True,
         )
 
-        retriever = QueryFusionRetriever(
+        self.retriever = QueryFusionRetriever(
             [
                 vector_retriever,
                 bm25_retriever,
@@ -234,25 +235,15 @@ class RagEngine:
             use_async=False,
         )
 
-        # similarity_filter = SimilarityPostprocessor(similarity_cutoff=0.001)
-
-        reranker = FlagEmbeddingReranker(
+        self.reranker = FlagEmbeddingReranker(
             model=os.getenv("RERANKER_MODEL"),
             top_n=8,
-        )
-
-        return RetrieverQueryEngine.from_args(
-            retriever,
-            node_postprocessors=[
-                # similarity_filter,
-                reranker,
-            ],
-            streaming=True,
         )
 
     def query(self, question):
 
         analysis = self.navigator.analyze_query(question)
+
         retrieval_query = analysis.get(
             "retrieval_query",
             question,
@@ -262,18 +253,101 @@ class RagEngine:
             "user_intent",
             "",
         )
-        log(f"[QueryRewrite] 用户想要{user_intent}")
+
+        presentation_intent = analysis.get(
+            "presentation_intent",
+            "",
+        )
+
+        log(f"[QueryRewrite] 用户希望: {user_intent} [{presentation_intent}]")
+
         log(f"[QueryRewrite] 关键词: {retrieval_query}")
 
-        #         enhanced_query = f"""
-        # 用户问题：
-        # {question}
+        #
+        # retrieve
+        #
 
-        # 输出要求：
-        # {presentation_intent}
-        #         """
+        nodes = self.retriever.retrieve(retrieval_query)
 
-        return self.query_engine.query(retrieval_query)
+        log(f"[Retrieve] nodes: {len(nodes)}")
+
+        #
+        # rerank
+        #
+
+        nodes = self.reranker.postprocess_nodes(
+            nodes,
+            query_str=retrieval_query,
+        )
+
+        log(f"[Rerank] nodes: {len(nodes)}")
+
+        #
+        # build context
+        #
+
+        context_parts = []
+
+        for i, node in enumerate(nodes):
+            text = node.node.text.strip()
+
+            context_parts.append(
+                f"""
+[Chunk {i + 1}]
+{text}
+"""
+            )
+
+        context = "\n\n".join(context_parts)
+
+        #
+        # build final prompt
+        #
+
+        final_prompt = f"""
+请基于提供的上下文回答用户问题。
+
+规则：
+
+1. 优先依据上下文回答。
+2. 如果上下文没有明确答案，直接回答“不知道”。
+3. 不要编造内容。
+4. 保持答案准确。
+5. 如果上下文存在不完整情况，提醒用户参考原始文档。
+
+---
+
+用户真实意图：
+
+{user_intent}
+
+---
+
+输出要求：
+
+{presentation_intent}
+
+---
+
+上下文：
+
+{context}
+
+---
+
+用户问题：
+
+{question}
+"""
+
+        # final generate
+        log("Answer starting")
+        stream = Settings.llm.stream_complete(final_prompt)
+
+        return {
+            "stream": stream,
+            "source_nodes": nodes,
+        }
 
     def classify_question(self, question):
         return self.navigator.classify_question(question)
