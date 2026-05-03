@@ -45,13 +45,8 @@ class QuestionNavigator:
         self.llm = Settings.llm
 
     def analyze_query(self, question: str):
-
-        #
         # fast classify
-        #
-
         fast_type = self._rule_filter(question)
-
         if fast_type != "RAG":
             return {
                 "question_type": fast_type,
@@ -60,9 +55,7 @@ class QuestionNavigator:
                 "user_intent": "",
             }
 
-        #
         # llm analyze
-        #
         prompt = f"""
 请分析用户问题。
 
@@ -74,10 +67,29 @@ class QuestionNavigator:
 
 返回JSON。
 
+你需要判断用户输入属于哪种类型：
+
+- RAG
+  用户在询问知识、文档、技术内容，需要检索资料回答。
+
+- CHAT
+  普通聊天、问候、感谢、闲聊。
+
+- INVALID
+  无意义输入、乱码、极短无上下文内容。
+
+如果是 RAG：
+必须生成 retrieval_query。
+
+如果不是 RAG：
+retrieval_query 留空。
+
+只返回JSON。
+
 格式：
 
 {{
-    "question_type": "RAG",
+            "question_type": "RAG | CHAT | INVALID",
     "retrieval_query": "...",
     "presentation_intent": "...",
     "user_intent": "..."
@@ -107,6 +119,26 @@ Windows平台对比Linux平台，用表格展示
     "user_intent": "介绍数据解析流程"
 }}
 
+用户:
+你好
+
+输出:
+{{
+            "question_type": "CHAT",
+  "retrieval_query": "",
+  "presentation_intent": "",
+  "user_intent": "打招呼"
+}}
+
+用户:
+???
+
+输出:
+{{
+            "question_type": "INVALID",
+    ...
+}}
+
 只返回JSON对象。
 不要使用markdown代码块。
 现在分析：
@@ -118,7 +150,7 @@ Windows平台对比Linux平台，用表格展示
         try:
             response = self.llm.complete(prompt)
             text = response.text.strip()
-            # log(f"[QueryAnalyzeRaw] {text}")
+            log(f"[QueryAnalyzeRaw] {text}")
             match = re.search(
                 r"\{.*\}",
                 text,
@@ -372,9 +404,6 @@ class RagEngine:
             "stream": stream,
             "source_nodes": nodes,
         }
-
-    def classify_question(self, question):
-        return self.navigator.classify_question(question)
 
 
 engine = RagEngine()
