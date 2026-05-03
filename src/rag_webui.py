@@ -3,8 +3,6 @@ import datetime
 import threading
 from queue import Queue
 import markdown
-import html
-import re
 
 from nicegui import ui
 from rich import print
@@ -17,6 +15,23 @@ from rag.formatter import build_debug_html
 def log(msg):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{timestamp}] {msg}")
+
+
+def render_markdown_html(md_str: str) -> str:
+    rendered_html = markdown.markdown(
+        md_str,
+        extensions=[
+            "fenced_code",
+            "tables",
+            "nl2br",
+            "extra",
+            "sane_lists",
+        ],
+    )
+    return f"""
+<div class="final-markdown">
+    {rendered_html}
+</div>"""
 
 
 def read_file_by_path(path):
@@ -119,6 +134,13 @@ def auto_scroll_chat():
 # page
 ui.add_head_html(
     """
+    <script>
+    window.MathJax = {
+    tex: {
+        inlineMath: [['$', '$'], ['\\\\(', '\\\\)']]
+    }
+    };
+    </script>
     <style>
     body {
         overflow: hidden;
@@ -336,6 +358,10 @@ ui.add_head_html(
     """
 )
 
+ui.add_body_html("""
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+""")
+
 ui.dark_mode(True)
 ui.colors(
     primary="#4f8cff",
@@ -444,24 +470,22 @@ with (
                             ):
                                 wait_html = markdown.markdown(
                                     "\U000023f3正在检索资料，请稍候……",
-                                    extensions=[
-                                        "fenced_code",
-                                        "tables",
-                                        "nl2br",
-                                        "sane_lists",
-                                    ],
                                 )
 
-                                assistant_message = ui.html(
-                                    f"""
+                                assistant_message = (
+                                    ui.html(
+                                        f"""
                                     <div class="streaming-text loading-text">
                                         {wait_html}
                                     </div>
                                     """
-                                ).style(
-                                    """
+                                    )
+                                    .props("id=assistant-msg")
+                                    .style(
+                                        """
                                     width: 100%;
                                     """
+                                    )
                                 )
                             sources_container = ui.row().classes("gap-2 mt-0")
                             auto_scroll_chat()
@@ -510,22 +534,8 @@ with (
                             if "\n" in accumulated:
                                 partial_text += accumulated
                                 accumulated = ""
-                                rendered_html = markdown.markdown(
-                                    partial_text,
-                                    extensions=[
-                                        "fenced_code",
-                                        "tables",
-                                        "nl2br",
-                                        "extra",
-                                        "sane_lists",
-                                    ],
-                                )
-
-                                assistant_message.content = f"""
-                                <div class="final-markdown">
-                                    {rendered_html}
-                                </div>
-                                """
+                                rendered_html = render_markdown_html(partial_text)
+                                assistant_message.content = rendered_html
                                 assistant_message.update()
                                 # auto scroll
                                 auto_scroll_chat()
@@ -601,21 +611,16 @@ with (
                     # final update
 
                     partial_text += f"  \n  \n  `\U0001f550{datetime.datetime.now().strftime('%H:%M:%S')}`"
-                    rendered_html = markdown.markdown(
-                        partial_text,
-                        extensions=[
-                            "fenced_code",
-                            "tables",
-                            "nl2br",
-                            "extra",
-                            "sane_lists",
-                        ],
-                    )
-                    assistant_message.content = f"""
-                    <div class="final-markdown">
-                        {rendered_html}
-                    </div>"""
+                    rendered_html = render_markdown_html(partial_text)
+                    assistant_message.content = rendered_html
                     assistant_message.update()
+                    ui.run_javascript("""
+if (window.MathJax) {
+    MathJax.typesetPromise();
+    const el = document.getElementById("assistant-msg");
+    MathJax.typesetPromise([el]);
+}
+""")
 
                     if should_show_sources:
                         shown_files = set()
@@ -635,8 +640,14 @@ with (
                                         ),
                                     ).props("flat dense")
 
-                    auto_scroll_chat()
+                except Exception as e:
+                    partial_text += f"  \n  \n  `📛出现了错误：{str(e)}`！"
+                    partial_text += f"  \n  \n  `\U0001f550{datetime.datetime.now().strftime('%H:%M:%S')}`"
+                    rendered_html = render_markdown_html(partial_text)
+                    assistant_message.content = rendered_html
+                    assistant_message.update()
                 finally:
+                    auto_scroll_chat()
                     send_button.enable()
                     input_box.enable()
 
