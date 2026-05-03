@@ -431,7 +431,7 @@ class IndexBuilder:
             enriched_meta = enrich_metadata(temp_node)
             final_nodes.append(
                 TextNode(
-                    text=merged_text,
+                    text=merged_text.strip(),
                     metadata=enriched_meta,
                 )
             )

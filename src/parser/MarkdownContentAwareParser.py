@@ -104,9 +104,9 @@ class MarkdownContentAwareParser:
             nonlocal current_start
             nonlocal current_end
 
-            content = "\n".join(current_lines).strip()
+            content = "\n".join(current_lines)
 
-            if not content:
+            if not content.strip():
                 current_lines = []
                 current_start = None
                 current_end = None
@@ -336,9 +336,9 @@ class MarkdownContentAwareParser:
 
                 i += 1
 
-            text = "\n".join(collected).strip()
+            text = "\n".join(collected)
 
-            if text:
+            if text.strip():
                 blocks.append(
                     {
                         "type": "text",

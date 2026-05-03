@@ -107,12 +107,12 @@ class MarkdownHeadingAwareParser:
             nonlocal current_header_path
             nonlocal current_start_line
             nonlocal current_end_line
-            content = "\n".join(current_content).strip()
+            content = "\n".join(current_content)
 
             #
             # skip empty content
             #
-            if not content:
+            if not content.strip():
                 return
 
             node_metadata = dict(metadata)
