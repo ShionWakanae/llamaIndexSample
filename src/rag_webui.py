@@ -43,6 +43,7 @@ def show_file_preview(name, path):
             max-height: 90vh;
 
             position: relative;
+            background: #313131;
             """
         ):
             # 右上角关闭按钮
@@ -63,7 +64,7 @@ def show_file_preview(name, path):
                 """
                 flex: 1;
                 overflow-y: auto;
-                background: #121212;
+                background: #1b1b1b;
                 border: 1px solid #3a3a3a;
                 border-radius: 8px;
                 padding: 12px;
@@ -121,7 +122,7 @@ ui.add_head_html(
     <style>
     body {
         overflow: hidden;
-        background: #212121;
+        background: #313131;
         color: #e0e0e0;
     }
 
@@ -260,7 +261,7 @@ ui.add_head_html(
     */
     pre {
 
-        background: #1a1a1a !important;
+        background: #2a2a2a !important;
         border: 1px solid #3a3a3a;
         border-radius: 8px;
         padding: 12px;
@@ -301,6 +302,35 @@ ui.add_head_html(
         100% {
             opacity: 0.35;
         }
+    }
+    .final-markdown ul {
+        padding-left: 1.5em;
+        margin: 0.5em 0;
+        list-style-type: disc;
+    }
+
+    .final-markdown ul ul {
+        padding-left: 1.5em;
+        list-style-type: circle;
+    }
+
+    .final-markdown li {
+        margin: 0.35em 0;
+    }
+
+    .final-markdown h1,
+    .final-markdown h2,
+    .final-markdown h3,
+    .final-markdown h4,
+    .final-markdown h5,
+    .final-markdown h6 {
+        margin-top: 1em;
+        margin-bottom: 0.5em;
+        font-weight: bold;
+    }
+
+    .final-markdown p {
+        margin: 0.4em 0;
     }
     </style>
     """
@@ -347,7 +377,7 @@ with (
                 """
             flex: 1;
             overflow-y: auto;
-            background: #121212;
+            background: #1b1b1b;
 
             border: 1px solid #3a3a3a;
             border-radius: 8px;
@@ -406,7 +436,7 @@ with (
                         with ui.column().classes("w-full items-start"):
                             with ui.chat_message(
                                 sent=False,
-                                name="\U0001f916智能助理",
+                                name="\U00002728智能助理",
                             ).style(
                                 """
                                 max-width: 80%;
@@ -480,11 +510,20 @@ with (
                             if "\n" in accumulated:
                                 partial_text += accumulated
                                 accumulated = ""
-                                escaped = html.escape(partial_text)
-                                escaped = escaped.replace("\n", "<br>")
+                                rendered_html = markdown.markdown(
+                                    partial_text,
+                                    extensions=[
+                                        "fenced_code",
+                                        "tables",
+                                        "nl2br",
+                                        "extra",
+                                        "sane_lists",
+                                    ],
+                                )
+
                                 assistant_message.content = f"""
-                                <div class="streaming-text">
-                                {escaped}
+                                <div class="final-markdown">
+                                    {rendered_html}
                                 </div>
                                 """
                                 assistant_message.update()
@@ -560,18 +599,15 @@ with (
                         ]
                     )
                     # final update
-                    partial_text += f"<br><br>`\U0001f550{datetime.datetime.now().strftime('%H:%M:%S')}`"
-                    final_text = re.sub(
-                        r"\n\s*\n",
-                        "\n<br>\n",
-                        partial_text,
-                    )
+
+                    partial_text += f"  \n  \n  `\U0001f550{datetime.datetime.now().strftime('%H:%M:%S')}`"
                     rendered_html = markdown.markdown(
-                        final_text,
+                        partial_text,
                         extensions=[
                             "fenced_code",
                             "tables",
                             "nl2br",
+                            "extra",
                             "sane_lists",
                         ],
                     )
@@ -658,7 +694,7 @@ with (
             height: 89vh;
             overflow-y: auto;
             font-size: 12px;
-            background: #121212;
+            background: #1b1b1b;
             """
         )
 
