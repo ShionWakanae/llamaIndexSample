@@ -31,8 +31,8 @@ class IndexBuilder:
     def split_table_node(
         self,
         node,
-        max_chunk_size: int = 2000,
-        tolerance: int = 300,
+        max_chunk_size: int = 1000,
+        tolerance: int = 200,
     ):
         """
         Split markdown table node by chunk size.
@@ -129,7 +129,7 @@ class IndexBuilder:
 
             new_metadata = dict(metadata)
 
-            new_metadata["line_start"] = base_line_start
+            new_metadata["line_start"] = base_line_start + first_data_line
 
             new_metadata["line_end"] = base_line_start + last_data_line
 
