@@ -11,24 +11,21 @@ class RagService:
 
         total_start = time.perf_counter()
         query_start = time.perf_counter()
-
-        intent = engine.classify_question(question)
-
-        if intent == "CHAT":
-            yield {
-                "type": "token",
-                "content": "你好，请直接提出需要查询的问题。",
-            }
-            return
-
-        if intent == "INVALID":
-            yield {
-                "type": "token",
-                "content": "你好，请输入明确的问题。",
-            }
-            return
-
         response = engine.query(question)
+        question_type = response.get(
+            "question_type",
+            "RAG",
+        )
+
+        if question_type != "RAG":
+            yield {
+                "type": "token",
+                "content": response.get(
+                    "message",
+                    "无法处理该问题。",
+                ),
+            }
+            return
 
         query_ms = round(
             (time.perf_counter() - query_start) * 1000,

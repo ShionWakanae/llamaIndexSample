@@ -46,6 +46,23 @@ class QuestionNavigator:
 
     def analyze_query(self, question: str):
 
+        #
+        # fast classify
+        #
+
+        fast_type = self._rule_filter(question)
+
+        if fast_type != "RAG":
+            return {
+                "question_type": fast_type,
+                "retrieval_query": "",
+                "presentation_intent": "",
+                "user_intent": "",
+            }
+
+        #
+        # llm analyze
+        #
         prompt = f"""
 请分析用户问题。
 
@@ -60,6 +77,7 @@ class QuestionNavigator:
 格式：
 
 {{
+    "question_type": "RAG",
     "retrieval_query": "...",
     "presentation_intent": "...",
     "user_intent": "..."
@@ -72,6 +90,7 @@ Windows平台对比Linux平台，用表格展示
 
 返回：
 {{
+    "question_type": "RAG",
     "retrieval_query": "Windows平台 Linux平台 对比",
     "presentation_intent": "table",
     "user_intent": "平台差异对比"
@@ -82,6 +101,7 @@ Windows平台对比Linux平台，用表格展示
 
 返回：
 {{
+    "question_type": "RAG",
     "retrieval_query": "HSS数据解析流程",
     "presentation_intent": "detailed",
     "user_intent": "介绍数据解析流程"
@@ -149,18 +169,6 @@ Windows平台对比Linux平台，用表格展示
         if len(q) <= 2:
             return "INVALID"
 
-        return None
-
-    def classify_question(self, question: str) -> str:
-        # fast rule filter
-        result = self._rule_filter(question)
-        # log(f"[FastFilter] {result}")
-        if result:
-            return result
-
-        # llm classify
-        # I'm not able to finish this with local LLM。
-        # for I can only run one big thinking model, no switch for non thinking.
         return "RAG"
 
 
@@ -243,6 +251,21 @@ class RagEngine:
     def query(self, question):
 
         analysis = self.navigator.analyze_query(question)
+        question_type = analysis.get(
+            "question_type",
+            "RAG",
+        )
+        if question_type != "RAG":
+            return {
+                "question_type": question_type,
+                "message": (
+                    "你好，请直接提出需要查询的问题。"
+                    if question_type == "CHAT"
+                    else "你好，请输入明确的问题。"
+                ),
+                "stream": None,
+                "source_nodes": [],
+            }
 
         retrieval_query = analysis.get(
             "retrieval_query",
@@ -345,6 +368,7 @@ class RagEngine:
         stream = Settings.llm.stream_complete(final_prompt)
 
         return {
+            "question_type": "RAG",
             "stream": stream,
             "source_nodes": nodes,
         }
