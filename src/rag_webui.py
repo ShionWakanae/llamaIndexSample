@@ -3,7 +3,6 @@ import datetime
 import threading
 from queue import Queue
 import markdown
-
 from nicegui import ui
 from rich import print
 
@@ -26,6 +25,7 @@ def render_markdown_html(md_str: str) -> str:
             "nl2br",
             "extra",
             "sane_lists",
+            "pymdownx.mark",
         ],
     )
     return f"""
@@ -46,43 +46,124 @@ def read_file_by_path(path):
         return f"读取失败:\n\n{e}"
 
 
-def show_file_preview(name, path):
+def build_highlighted_markdown(content, hits):
+
+    lines = content.splitlines()
+
+    #
+    # merge intervals
+    #
+    normalized_hits = []
+
+    for start, end in sorted(hits):
+        if end <= start:
+            continue
+
+        if not normalized_hits:
+            normalized_hits.append([start, end])
+            continue
+
+        last_start, last_end = normalized_hits[-1]
+
+        if start <= last_end:
+            normalized_hits[-1][1] = max(
+                last_end,
+                end,
+            )
+        else:
+            normalized_hits.append([start, end])
+
+    #
+    # highlighted line set
+    #
+    highlighted = set()
+
+    for start, end in normalized_hits:
+        for i in range(start, end):
+            highlighted.add(i)
+
+    #
+    # rebuild markdown
+    #
+    output = []
+
+    for idx, line in enumerate(lines):
+        #
+        # highlight line
+        #
+        if idx in highlighted:
+            #
+            # avoid empty line highlight issue
+            #
+            if line.strip():
+                if line.lstrip().startswith("|"):
+                    output.append(line)
+
+                else:
+                    output.append(f"=={line}==")
+            else:
+                output.append(line)
+
+        #
+        # normal line
+        #
+        else:
+            output.append(line)
+
+    return "\n".join(output)
+
+
+def show_file_preview(name, path, hits):
+
     content = read_file_by_path(path)
+
+    highlighted_md = build_highlighted_markdown(
+        content,
+        hits,
+    )
+
+    highlighted_html = render_markdown_html(
+        highlighted_md,
+    )
+
     with ui.dialog().props("maximized persistent") as dialog:
         with ui.card().style(
             """
-            width: 1200px;
-            max-width: 90vw;
+    width: 1200px;
+    max-width: 90vw;
 
-            height: 900px;
-            max-height: 90vh;
+    height: 900px;
+    max-height: 90vh;
 
-            position: relative;
-            background: #313131;
-            """
+    position: relative;
+
+    background: #313131;
+
+    padding: 16px;
+    """
         ):
-            # 右上角关闭按钮
             ui.button(
                 icon="close",
                 on_click=dialog.close,
             ).props("flat round dense").style(
                 """
                 position: absolute;
-                top: 8px;
+                top: 16px;
                 right: 8px;
                 z-index: 10;
                 """
             )
 
             ui.markdown(f"### 《{name}》")
-            ui.markdown(content).classes("w-full").style(
+
+            ui.html(highlighted_html).classes("w-full").style(
                 """
                 flex: 1;
                 overflow-y: auto;
                 background: #1b1b1b;
                 border: 1px solid #3a3a3a;
                 border-radius: 8px;
-                padding: 12px;
+                padding: 8px;
                 """
             )
 
@@ -164,7 +245,6 @@ ui.add_head_html(
     .q-select,
     .q-textarea,
     .q-input,
-    .q-card,
     .border-panel {
         background: #1b1b1b !important;
         border: 1px solid #3a3a3a !important;
@@ -350,9 +430,31 @@ ui.add_head_html(
         margin-bottom: 0.5em;
         font-weight: bold;
     }
+    .final-markdown h1 {
+        font-size: 1.8em;
+    }
 
+    .final-markdown h2 {
+        font-size: 1.5em;
+    }
+
+    .final-markdown h3 {
+        font-size: 1.3em;
+    }
+
+    .final-markdown h4,
+    .final-markdown h5,
+    .final-markdown h6 {
+        font-size: 1.1em;
+    }
     .final-markdown p {
         margin: 0.4em 0;
+    }
+    mark {
+        background: #ffe066;
+        color: black;
+        padding: 0 2px;
+        border-radius: 2px;
     }
     </style>
     """
@@ -449,7 +551,7 @@ with (
                         with ui.row().classes("w-full justify-end"):
                             with ui.chat_message(
                                 sent=True,
-                                name="用户\U0001f464",
+                                name="用户🧑",
                                 stamp=f"\U0001f550{datetime.datetime.now().strftime('%H:%M:%S')}",
                             ).style(
                                 """
@@ -626,7 +728,9 @@ if (window.MathJax) {
                         shown_files = set()
                         with sources_container:
                             with ui.row().classes("gap-2 mt-2"):
-                                for file_name, file_path in file_map.items():
+                                for file_name, file_info in file_map.items():
+                                    file_path = file_info["path"]
+                                    hits = file_info["hits"]
                                     if file_name in shown_files:
                                         continue
 
@@ -635,8 +739,8 @@ if (window.MathJax) {
                                     ui.button(
                                         file_name,
                                         icon="description",
-                                        on_click=lambda n=file_name, p=file_path: (
-                                            show_file_preview(n, p)
+                                        on_click=lambda n=file_name, p=file_path, h=hits: (
+                                            show_file_preview(n, p, h)
                                         ),
                                     ).props("flat dense")
 

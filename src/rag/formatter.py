@@ -35,7 +35,18 @@ def build_reference_files(source_nodes):
             ref_line = f"{ref_line} `{line_start}->{line_end}行`"
         refs.append(ref_line)
 
-        files[file_name] = file_path
+        if file_name not in files:
+            files[file_name] = {
+                "path": file_path,
+                "hits": [],
+            }
+
+        files[file_name]["hits"].append(
+            (
+                line_start,
+                line_end,
+            )
+        )
 
     return (
         "\n".join(refs),
