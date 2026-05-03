@@ -1,5 +1,6 @@
 import os
 import re
+import json
 import datetime
 import warnings
 from rich import print
@@ -42,7 +43,84 @@ def hybrid_tokenizer(text):
 
 class QuestionNavigator:
     def __init__(self):
-        self.llm = None
+        self.llm = Settings.llm
+
+    def analyze_query(self, question: str):
+
+        prompt = f"""
+请分析用户问题。
+
+目标：
+1. 提取真正用于知识检索的内容。
+2. 剥离输出格式要求。
+3. 剥离语气词。
+4. 保留用户真实业务问题。
+
+返回JSON。
+
+格式：
+
+{{
+    "retrieval_query": "...",
+    "presentation_intent": "...",
+    "user_intent": "..."
+}}
+
+示例：
+
+用户：
+Windows平台对比Linux平台，用表格展示
+
+返回：
+{{
+    "retrieval_query": "Windows平台 Linux平台 对比",
+    "presentation_intent": "table",
+    "user_intent": "平台差异对比"
+}}
+
+用户：
+请详细介绍HSS数据解析流程
+
+返回：
+{{
+    "retrieval_query": "HSS数据解析流程",
+    "presentation_intent": "detailed",
+    "user_intent": "介绍数据解析流程"
+}}
+
+只返回JSON对象。
+不要使用markdown代码块。
+现在分析：
+
+用户：
+{question}
+        """
+
+        try:
+            response = self.llm.complete(prompt)
+            text = response.text.strip()
+            # log(f"[QueryAnalyzeRaw] {text}")
+            match = re.search(
+                r"\{.*\}",
+                text,
+                re.DOTALL,
+            )
+
+            if not match:
+                raise ValueError("No JSON found")
+
+            json_text = match.group(0)
+            result = json.loads(json_text)
+            return result
+
+        except Exception as e:
+            log(f"[QueryAnalyzeError] {e}")
+
+            return {
+                "retrieval_query": question,
+                "presentation_intent": "",
+                "user_intent": "",
+            }
 
     def _rule_filter(self, question: str):
         q = question.strip().lower()
@@ -174,7 +252,28 @@ class RagEngine:
 
     def query(self, question):
 
-        return self.query_engine.query(question)
+        analysis = self.navigator.analyze_query(question)
+        retrieval_query = analysis.get(
+            "retrieval_query",
+            question,
+        )
+
+        user_intent = analysis.get(
+            "user_intent",
+            "",
+        )
+        log(f"[QueryRewrite] 用户想要{user_intent}")
+        log(f"[QueryRewrite] 关键词: {retrieval_query}")
+
+        #         enhanced_query = f"""
+        # 用户问题：
+        # {question}
+
+        # 输出要求：
+        # {presentation_intent}
+        #         """
+
+        return self.query_engine.query(retrieval_query)
 
     def classify_question(self, question):
         return self.navigator.classify_question(question)

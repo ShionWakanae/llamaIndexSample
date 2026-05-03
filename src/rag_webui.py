@@ -450,6 +450,29 @@ ui.add_head_html(
     .final-markdown p {
         margin: 0.4em 0;
     }
+    .final-markdown table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 12px 0;
+        font-size: 14px;
+    }
+
+    .final-markdown th,
+    .final-markdown td {
+        border: 1px solid #4a4a4a;
+        padding: 8px 12px;
+        text-align: left;
+        vertical-align: top;
+    }
+
+    .final-markdown th {
+        background: #2a2a2a;
+        font-weight: bold;
+    }
+
+    .final-markdown tr:nth-child(even) {
+        background: #222222;
+    }
     mark {
         background: #ffe066;
         color: black;
