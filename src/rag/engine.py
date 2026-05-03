@@ -150,7 +150,7 @@ Windows平台对比Linux平台，用表格展示
         try:
             response = self.llm.complete(prompt)
             text = response.text.strip()
-            log(f"[QueryAnalyzeRaw] {text}")
+            # log(f"[QueryAnalyzeRaw] {text}")
             match = re.search(
                 r"\{.*\}",
                 text,
@@ -232,10 +232,10 @@ class RagEngine:
 2. 如果上下文没有明确答案，直接说“不知道”。
 3. 不要编造事实。
 4. 回答尽量准确、简洁。
-5. 尽量用列表的方式输出并列的内容。
-6. 使用更小更低层次（比如5级6级）的markdown标题标签。
-6. 如果文档存在歧义，指出歧义。
-7. 如果发现提供的上下文从语义上被截断，提示用户`参考并以原始文档为准！`。
+5. 直接回答内容，禁止说`根据某某`。
+6. 尽量用列表的方式输出并列的内容。
+7. 如果文档存在歧义，指出歧义。
+8. 如果发现提供的上下文从语义上被截断，提示用户`参考并以原始文档为准！`。
 """,
         )
 
@@ -253,12 +253,12 @@ class RagEngine:
         log(f"[RAG] Loaded nodes: {len(all_nodes)}")
 
         vector_retriever = index.as_retriever(
-            similarity_top_k=20,
+            similarity_top_k=int(os.getenv("RETRIEVAL_VECTOR_TOP_K", 15)),
         )
 
         bm25_retriever = BM25Retriever.from_defaults(
             nodes=all_nodes,
-            similarity_top_k=20,
+            similarity_top_k=int(os.getenv("RETRIEVAL_BM25_TOP_K", 15)),
             tokenizer=hybrid_tokenizer,
             language="zh",
             skip_stemming=True,
@@ -269,7 +269,7 @@ class RagEngine:
                 vector_retriever,
                 bm25_retriever,
             ],
-            similarity_top_k=40,
+            similarity_top_k=int(os.getenv("VECTOR_SIMILARITY_TOP_K", 30)),
             num_queries=1,
             mode="reciprocal_rerank",
             use_async=False,
@@ -277,7 +277,7 @@ class RagEngine:
 
         self.reranker = FlagEmbeddingReranker(
             model=os.getenv("RERANKER_MODEL"),
-            top_n=8,
+            top_n=int(os.getenv("RETRIEVAL_RERANK_TOP_N", 5)),
         )
 
     def query(self, question):
@@ -314,8 +314,7 @@ class RagEngine:
             "",
         )
 
-        log(f"[QueryRewrite] 用户希望: {user_intent} [{presentation_intent}]")
-
+        log(f"[QueryRewrite] 意图是: {user_intent} ({presentation_intent})")
         log(f"[QueryRewrite] 关键词: {retrieval_query}")
 
         #
@@ -360,15 +359,15 @@ class RagEngine:
         #
 
         final_prompt = f"""
-请基于提供的上下文回答用户问题。
+请基于提供的企业资料回答用户问题。
 
 规则：
 
-1. 优先依据上下文回答。
-2. 如果上下文没有明确答案，直接回答“不知道”。
+1. 优先依据企业资料回答。
+2. 如果企业资料没有明确答案，直接回答“不知道”。
 3. 不要编造内容。
 4. 保持答案准确。
-5. 如果上下文存在不完整情况，提醒用户参考原始文档。
+5. 如果企业资料存在不完整情况，提醒用户参考原始文档。
 
 ---
 
@@ -384,7 +383,7 @@ class RagEngine:
 
 ---
 
-上下文：
+企业资料：
 
 {context}
 
