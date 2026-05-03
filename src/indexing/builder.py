@@ -1,6 +1,5 @@
 import os
 from llama_index.core import SimpleDirectoryReader
-from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core.schema import TextNode
 from parser.MarkdownHeadingAwareParser import MarkdownHeadingAwareParser
 from parser.MarkdownContentAwareParser import MarkdownContentAwareParser
@@ -14,10 +13,6 @@ global_chunk_overlap = int(os.getenv("CHUNK_OVERLAP", 80))
 
 class IndexBuilder:
     def __init__(self):
-        self.splitter = SentenceSplitter(
-            chunk_size=global_chunk_size,
-            chunk_overlap=global_chunk_overlap,
-        )
         self.markdown_heading_parser = MarkdownHeadingAwareParser(
             include_metadata=True,
             include_prev_next_rel=True,
