@@ -131,7 +131,7 @@ class MarkdownContentAwareParser:
             block_text = block["text"]
             block_type = block["type"]
             abs_start = base_line_start + block["start_line"]
-            abs_end = base_line_start + block["end_line"]
+            abs_end = base_line_start + block["end_line"] + 1
 
             #
             # structured block
@@ -181,7 +181,7 @@ class MarkdownContentAwareParser:
                 if current_start is None:
                     current_start = abs_start + idx
 
-                current_end = abs_start + idx
+                current_end = abs_start + idx + 1
 
                 current_lines.append(line)
 

@@ -131,7 +131,7 @@ class IndexBuilder:
 
             new_metadata["line_start"] = base_line_start + first_data_line
 
-            new_metadata["line_end"] = base_line_start + last_data_line
+            new_metadata["line_end"] = base_line_start + last_data_line + 1
 
             new_metadata["table_row_start"] = current_start_idx
 

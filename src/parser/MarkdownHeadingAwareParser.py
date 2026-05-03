@@ -141,7 +141,7 @@ class MarkdownHeadingAwareParser:
                 #
                 flush_section()
                 current_start_line = line_no + 1
-                current_end_line = line_no + 2
+                current_end_line = line_no + 1
                 current_content = []
                 hashes = match.group(1)
                 title = match.group(2).strip()
@@ -165,7 +165,7 @@ class MarkdownHeadingAwareParser:
                 current_header_path = "/" + "/".join(path_parts) + "/"
             else:
                 current_content.append(line)
-                current_end_line = line_no
+                current_end_line = line_no + 1
 
         #
         # flush last section
