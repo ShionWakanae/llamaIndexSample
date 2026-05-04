@@ -65,14 +65,25 @@ Python .\MarkItDownSample.py "Input dir" "Output dir"
 
 ### (1) Configure the LLM and Models
 
-Copy `.env_sample` to `.env`, then modify the API endpoint, API key, and model configurations (local or online). Example configuration:
+Copy `.env_sample` to `.env`, then update the API endpoint, API key, and model configurations (local or remote). The remaining parameters can be left unchanged initially and adjusted later as needed. An example configuration is shown below:
 ``` ini
-LLM_API_BASE=https://api.openai.com/v1      # Local or online OpenAI-compatible API endpoint
+LLM_API_BASE=https://api.openai.com/v1      # OpenAI or OpenAI-compatible API endpoint (local or remote)
 LLM_API_KEY=sk-xxxxx                        # API key
 LLM_MODEL=gpt-4.1-mini                      # Model name
 
-EMBEDDING_MODEL=BAAI/bge-m3                # Optional; automatically downloaded from Hugging Face
-RERANKER_MODEL=BAAI/bge-reranker-v2-m3     # Optional; automatically downloaded from Hugging Face
+EMBEDDING_MODEL=BAAI/bge-m3                 # Automatically downloaded from Hugging Face if needed.
+RERANKER_MODEL=BAAI/bge-reranker-v2-m3      # Automatically downloaded from Hugging Face if needed.
+
+CHUNK_SIZE=1024                             # Text chunk size
+CHUNK_OVERLAP=80                            # Overlap size between chunks (currently unused)
+
+RETRIEVAL_VECTOR_TOP_K=15                   # Number of vector search results to retrieve
+RETRIEVAL_BM25_TOP_K=15                     # Number of BM25 search results to retrieve
+VECTOR_SIMILARITY_TOP_K=30                  # Number of similar content chunks to retrieve
+
+RETRIEVAL_RERANK_TOP_N=5                    # Number of results kept after reranking
+
+REF_FILE_PATH="Path_To"                     # Path to reference documents (used for image rendering)
 ```
 
 ### (2) Build the Knowledge Base

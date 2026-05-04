@@ -65,7 +65,7 @@ Python .\MarkItDownSample.py "Input dir" "Output dir"
 
 ### （1）配置LLM和模型
 
-将`.env_sample`拷贝成`.env`，并修改其中的API地址密钥，各种模型配置（本地或在线），配置样例如下：
+将`.env_sample`拷贝成`.env`，并修改其中的API地址密钥，各种模型配置（本地或在线），其它参数可保留原样，后根据实际情况修改，配置样例如下：
 ``` ini
 LLM_API_BASE=https://api.openai.com/v1      #本地或在线的OpenAI或兼容API地址
 LLM_API_KEY=sk-xxxxx                        #密钥
@@ -73,6 +73,17 @@ LLM_MODEL=gpt-4.1-mini                      #模型名称
 
 EMBEDDING_MODEL=BAAI/bge-m3                 #可以不修改，自动从hf上下载。
 RERANKER_MODEL=BAAI/bge-reranker-v2-m3      #可以不修改，自动从hf上下载。
+
+CHUNK_SIZE=1024                             #分块大小。
+CHUNK_OVERLAP=80                            #分块重叠区间（暂未使用）。
+
+RETRIEVAL_VECTOR_TOP_K = 15                 #向量召回数量。
+RETRIEVAL_BM25_TOP_K = 15                   #BM25召回数量。
+VECTOR_SIMILARITY_TOP_K = 30                #相似内容召回数量。
+
+RETRIEVAL_RERANK_TOP_N = 5                  #重排序后召回数量。
+
+REF_FILE_PATH = "Path_To"                   #参考文档路径（用于图像显示）。
 ```
 
 ### （2）建立知识库

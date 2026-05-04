@@ -4,11 +4,19 @@ import threading
 from queue import Queue
 import markdown
 from nicegui import ui
+from nicegui import app
 from rich import print
-
+import re
 from rag.service import service
 from rag.formatter import build_reference_files
 from rag.formatter import build_debug_html
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+ref_path = os.getenv("REF_FILE_PATH", "")
+if ref_path:
+    app.add_static_files("/static/ref_md", f"{ref_path}")
 
 
 def log(msg):
@@ -16,7 +24,16 @@ def log(msg):
     print(f"[{timestamp}] {msg}")
 
 
+def rewrite_image_paths(md_str: str) -> str:
+    return re.sub(
+        r"!\[(.*?)\]\(images/(.*?)\)",
+        r"![\1](/static/ref_md/images/\2)",
+        md_str,
+    )
+
+
 def render_markdown_html(md_str: str) -> str:
+    md_str = rewrite_image_paths(md_str)
     rendered_html = markdown.markdown(
         md_str,
         extensions=[
