@@ -47,21 +47,21 @@ text_rules:
     value: true
 
 
-chunk_type_rules:
+# chunk_type_rules:
 
-  - target: text
-    match:
-      - 步骤1
-      - 操作步骤
-      - 流程如下
-    value: procedure
+#   - target: text
+#     match:
+#       - 步骤1
+#       - 操作步骤
+#       - 流程如下
+#     value: procedure
 
-  - target: text
-    match:
-      - "|"
-    value: table
+#   - target: text
+#     match:
+#       - "|"
+#     value: table
 
-  - target: header
-    match:
-      - 配置
-    value: config_doc
+#   - target: header
+#     match:
+#       - 配置
+#     value: config_doc
