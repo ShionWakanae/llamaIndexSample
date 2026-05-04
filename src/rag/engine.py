@@ -2,6 +2,7 @@ import os
 import re
 import json
 import datetime
+import traceback
 import warnings
 from rich import print
 from dotenv import load_dotenv
@@ -12,13 +13,15 @@ from llama_index.core import (
     StorageContext,
     load_index_from_storage,
 )
+from llama_index.core.base.llms.types import (
+    CompletionResponse,
+)
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.llms.openai_like import OpenAILike
 from llama_index.postprocessor.flag_embedding_reranker import FlagEmbeddingReranker
 from llama_index.core.retrievers import QueryFusionRetriever
 from llama_index.retrievers.bm25 import BM25Retriever
 from llama_index.core.schema import TextNode
-# from llama_index.core.postprocessor import SimilarityPostprocessor
 
 warnings.filterwarnings("ignore", message="pkg_resources is deprecated as an API")
 import jieba  # noqa: E402
@@ -26,6 +29,62 @@ import jieba  # noqa: E402
 logging.set_verbosity_error()
 
 load_dotenv()
+
+
+class UsageCollector:
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.rewrite = {
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "source": "none",
+            "model": "unknown",
+        }
+        self.answer = {
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "source": "none",
+            "model": "unknown",
+        }
+
+    def set_rewrite(self, usage: dict, source="llm", model="unknown"):
+        self.rewrite = {
+            "prompt_tokens": usage.get("prompt_tokens", 0),
+            "completion_tokens": usage.get("completion_tokens", 0),
+            "source": source,
+            "model": model,
+        }
+
+    def set_answer(self, usage: dict, source="llm", model="unknown"):
+        self.answer = {
+            "prompt_tokens": usage.get("prompt_tokens", 0),
+            "completion_tokens": usage.get("completion_tokens", 0),
+            "source": source,
+            "model": model,
+        }
+
+    def get_total(self):
+        return {
+            "prompt_tokens": self.rewrite["prompt_tokens"]
+            + self.answer["prompt_tokens"],
+            "completion_tokens": self.rewrite["completion_tokens"]
+            + self.answer["completion_tokens"],
+            "total_tokens": (
+                self.rewrite["prompt_tokens"]
+                + self.rewrite["completion_tokens"]
+                + self.answer["prompt_tokens"]
+                + self.answer["completion_tokens"]
+            ),
+        }
+
+    def to_dict(self):
+        return {
+            "rewrite": self.rewrite,
+            "answer": self.answer,
+            "total": self.get_total(),
+        }
 
 
 def log(msg):
@@ -40,11 +99,88 @@ def hybrid_tokenizer(text):
     return [t.strip() for t in tokens if t.strip() and len(t.strip()) > 1]
 
 
+def stream_with_usage(llm, prompt, usage_collector: UsageCollector, engine):
+    stream = llm.stream_complete(prompt)
+
+    usage_holder = {}
+    full_completion = ""
+    try:
+        for chunk in stream:
+            delta = getattr(chunk, "delta", "")
+            if delta:
+                full_completion += delta
+
+            yield chunk
+
+            raw = getattr(chunk, "raw", None)
+            if raw:
+                usage_obj = getattr(raw, "usage", None)
+                if usage_obj:
+                    for key in ("prompt_tokens", "completion_tokens"):
+                        usage_holder[key] = max(
+                            usage_holder.get(key, 0),
+                            getattr(usage_obj, key, 0),
+                        )
+    finally:
+        model = engine._get_model_name(llm)
+        if usage_holder:
+            usage_collector.set_answer(
+                usage_holder,
+                source="llm",
+                model=model,
+            )
+        else:
+            usage_collector.set_answer(
+                engine.estimate_usage(llm, prompt, full_completion),
+                source="estimate",
+                model=model,
+            )
+
+
+def extract_usage(response: CompletionResponse):
+    # log(type(response.raw))
+    raw = getattr(response, "raw", None)
+    if raw is None:
+        return {}
+
+    # 情况1：dict
+    if isinstance(raw, dict):
+        usage = raw.get("usage", {})
+
+    # 情况2：Pydantic对象（ChatCompletion）
+    else:
+        usage_obj = getattr(raw, "usage", None)
+        if usage_obj:
+            # usage_obj 也是对象，不是dict
+            usage = {
+                "prompt_tokens": getattr(usage_obj, "prompt_tokens", 0),
+                "completion_tokens": getattr(usage_obj, "completion_tokens", 0),
+                "total_tokens": getattr(usage_obj, "total_tokens", 0),
+            }
+        else:
+            usage = {}
+
+    return usage
+
+
 class QuestionNavigator:
     def __init__(self):
-        self.llm = Settings.llm
+        self.llm = OpenAILike(
+            api_base=os.getenv("LLM_API_BASE"),
+            api_key=os.getenv("LLM_API_KEY"),
+            model=(os.getenv("LLM_MODEL_SMALL") or "").strip()
+            or os.getenv("LLM_MODEL")
+            or "unknown",
+            is_chat_model=True,
+            streaming=False,
+            extra_body={"enable_thinking": False},
+            temperature=0.0,
+            system_prompt="""
+你是一个分析用户输入的助手。
+""",
+        )
 
-    def analyze_query(self, question: str):
+    def analyze_query(self, question: str, engine):
         # fast classify
         fast_type = self._rule_filter(question)
         if fast_type != "RAG":
@@ -149,6 +285,15 @@ Windows平台对比Linux平台，用表格展示
 
         try:
             response = self.llm.complete(prompt)
+            usage, source = engine.extract_or_estimate_usage(
+                response,
+                self.llm,
+                prompt,
+            )
+            model = engine._get_model_name(self.llm)
+            engine.usage.set_rewrite(usage, source, model)
+            # log(f"[RewriteUsage] {usage}")
+
             text = response.text.strip()
             # log(f"[QueryAnalyzeRaw] {text}")
             match = re.search(
@@ -166,6 +311,7 @@ Windows平台对比Linux平台，用表格展示
 
         except Exception as e:
             log(f"[QueryAnalyzeError] {e}")
+            log(traceback.format_exc())
 
             return {
                 "retrieval_query": question,
@@ -208,10 +354,15 @@ class RagEngine:
     def __init__(self):
         log("[RAG] Initializing...")
         self._init_models()
-        # self.query_engine = self._build_query_engine()
         self._build_pipeline()
         self.navigator = QuestionNavigator()
+        self.usage = UsageCollector()
         log("[RAG] Ready")
+
+    def _get_model_name(self, llm):
+        return (
+            getattr(llm, "model", None) or getattr(llm, "model_name", None) or "unknown"
+        )
 
     def _init_models(self):
         Settings.llm = OpenAILike(
@@ -220,7 +371,7 @@ class RagEngine:
             model=os.getenv("LLM_MODEL"),
             is_chat_model=True,
             streaming=True,
-            temperature=0.1,
+            temperature=0.0,
             repeat_penalty=1.1,
             context_window=32000,
             max_tokens=4096,
@@ -282,7 +433,7 @@ class RagEngine:
 
     def query(self, question):
 
-        analysis = self.navigator.analyze_query(question)
+        analysis = self.navigator.analyze_query(question, self)
         question_type = analysis.get(
             "question_type",
             "RAG",
@@ -314,8 +465,8 @@ class RagEngine:
             "",
         )
 
-        log(f"[QueryRewrite] 意图是: {user_intent} ({presentation_intent})")
-        log(f"[QueryRewrite] 关键词: {retrieval_query}")
+        log(f"[Rewrite] 意图是: {user_intent} ({presentation_intent})")
+        log(f"[Rewrite] 关键词: {retrieval_query}")
 
         #
         # retrieve
@@ -396,13 +547,54 @@ class RagEngine:
 
         # final generate
         log("Answer starting")
-        stream = Settings.llm.stream_complete(final_prompt)
-
+        stream = stream_with_usage(Settings.llm, final_prompt, self.usage, self)
         return {
             "question_type": "RAG",
             "stream": stream,
             "source_nodes": nodes,
         }
+
+    def _rough_token_count(self, text: str) -> int:
+        if not text:
+            return 0
+
+        # 中文约 1~1.5 char/token
+        # 英文约 4 char/token
+        return max(1, len(text) // 2)
+
+    def estimate_usage(
+        self,
+        llm,
+        prompt: str,
+        completion: str = "",
+    ):
+        system_prompt = getattr(llm, "system_prompt", "") or ""
+
+        prompt_text = system_prompt + "\n" + prompt
+        return {
+            "prompt_tokens": self._rough_token_count(prompt_text),
+            "completion_tokens": self._rough_token_count(completion),
+        }
+
+    def extract_or_estimate_usage(
+        self,
+        response,
+        llm,
+        prompt,
+    ):
+        usage = extract_usage(response)
+
+        if usage:
+            return usage, "llm"
+
+        return (
+            self.estimate_usage(
+                llm,
+                prompt,
+                response.text,
+            ),
+            "estimate",
+        )
 
 
 engine = RagEngine()

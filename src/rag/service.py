@@ -4,13 +4,16 @@ from rag.engine import engine
 
 
 class RagService:
+    def get_token_usage(self):
+        return engine.usage.to_dict()
+
     def stream_answer(
         self,
         question,
     ):
-
         total_start = time.perf_counter()
         query_start = time.perf_counter()
+        engine.usage.reset()
         response = engine.query(question)
         question_type = response.get(
             "question_type",
@@ -32,14 +35,9 @@ class RagService:
             2,
         )
 
-        #
         # stream answer
-        #
-
         got_answer = False
-
         llm_start = time.perf_counter()
-
         for chunk in response["stream"]:
             token = getattr(
                 chunk,
@@ -60,10 +58,7 @@ class RagService:
             2,
         )
 
-        #
         # source nodes
-        #
-
         source_nodes = response.get(
             "source_nodes",
             [],
@@ -74,10 +69,7 @@ class RagService:
             "content": source_nodes,
         }
 
-        #
         # debug info
-        #
-
         retrieval = []
 
         for idx, node in enumerate(

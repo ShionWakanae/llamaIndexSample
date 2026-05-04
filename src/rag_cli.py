@@ -1,9 +1,14 @@
+import json
 import sys
 import datetime
-import builtins
+
+# import builtins
 from rich import print
 from rich.text import Text
 from rich.live import Live
+
+# from rich.pretty import Pretty
+from rich.json import JSON
 from utils.AsyncSpinner import AsyncSpinner
 from rag.service import service
 
@@ -18,12 +23,7 @@ if len(sys.argv) != 2:
     sys.exit(1)
 
 quest_str = sys.argv[1]
-
-log("Question:")
-print()
-q_obj = Text(f"\t{quest_str}", style="bold bright_yellow")
-print(q_obj)
-print()
+log(f"Question: [bold bright_yellow]{quest_str}[/]")
 
 # log("Vector retrieval test")
 # vector_results = vector_retriever.retrieve(quest_str)
@@ -47,9 +47,8 @@ print()
 #     print(node.text[:300])
 
 
-log("Thinking...")
-print()
 spinner = AsyncSpinner()
+timing = {}
 with Live(Text("....", style="yellow"), refresh_per_second=2) as live:
     spinner.live = live
     spinner.start()
@@ -61,11 +60,10 @@ with Live(Text("....", style="yellow"), refresh_per_second=2) as live:
             chunk = event["content"]
             if chunk:
                 if first:
+                    log("Streaming...")
                     spinner.stop()
                     live.stop()
                     first = False
-                    log("\rAnswer:")
-                    print()
                 accumulated += chunk
                 # 遇到句号、感叹号、问号或换行时输出
                 if "\n" in accumulated:
@@ -73,6 +71,10 @@ with Live(Text("....", style="yellow"), refresh_per_second=2) as live:
                     accumulated = ""
         elif event["type"] == "sources":
             source_nodes = event["content"]
+        # debug
+        elif event["type"] == "debug":
+            debug_data = event["content"]
+            timing = debug_data.get("timing", {})
     if accumulated:
         print(f"[bold bright_magenta]{accumulated}[/]", end="", flush=True)
     if first:
@@ -95,21 +97,46 @@ for i, node in enumerate(source_nodes):
         print(f"({j}) [bright_blue]{file_name}[/]")
 print()
 
-log("End of answer")
+log("Answer completed")
+log(
+    f"Query: {timing.get('query_ms', 0)} ms, LLM: {timing.get('llm_ms', 0)} ms, Total: {timing.get('total_ms', 0)} ms"
+)
+usage = service.get_token_usage()
+src = usage["rewrite"]["source"]
+model = usage["rewrite"]["model"]
+log(
+    f"Rewrite token in: {usage['rewrite']['prompt_tokens']}, out:{usage['rewrite']['completion_tokens']}, from: {model if src == 'llm' else f'{model} [bold red]{src}[/]!!!'}"
+)
+src = usage["answer"]["source"]
+model = usage["answer"]["model"]
+log(
+    f"Answers token in: {usage['answer']['prompt_tokens']}, out:{usage['answer']['completion_tokens']}, from: {model if src == 'llm' else f'{model} [bold red]{src}[/]!!!'}"
+)
+log(f"Total token usage: {usage['total']['total_tokens']}")
+print()
+
 show_details = input("你要查看具体的命中信息吗？[y/N]: ").strip().lower()
 if show_details.lower() in ("y", "yes"):
     log("命中的内容:")
-    for node in source_nodes:
-        print(
-            ">>>-------------------------------------------------------------------------------<<<"
-        )
-        print(">>> score:(", node.score, ") metadata：", node.metadata)
-        builtins.print(
-            node.text.replace(
-                "\n",
-                " ",
-            )
-        )
-        print()
+
+    retrieval = debug_data.get(
+        "retrieval",
+        [],
+    )
+    # print(Pretty(retrieval, expand_all=True))
+    print(JSON(json.dumps(retrieval, ensure_ascii=False, indent=2)))
+
+    # for node in source_nodes:
+    #     print(
+    #         ">>>-------------------------------------------------------------------------------<<<"
+    #     )
+    #     print(">>> score:(", node.score, ") metadata：", node.metadata)
+    #     builtins.print(
+    #         node.text.replace(
+    #             "\n",
+    #             " ",
+    #         )
+    #     )
+    #     print()
 
 log("All done ✅")
