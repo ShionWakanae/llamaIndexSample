@@ -4,4 +4,3 @@
 /.env
 __pycache__
 *.pyc
-/static/ref_md
