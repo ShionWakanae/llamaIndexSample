@@ -694,6 +694,7 @@ def main():
                         partial_text = ""
                         source_nodes = []
                         got_answer = False
+                        first_token = False
 
                         # background stream
                         queue = Queue()
@@ -719,7 +720,9 @@ def main():
 
                             # token
                             if event["type"] == "token":
-                                got_answer = True
+                                if not first_token:
+                                    log("Streaming...")
+                                first_token = True
                                 if partial_text == "":
                                     assistant_message.content = ""
                                 accumulated += event["content"]
