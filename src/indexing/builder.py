@@ -27,7 +27,7 @@ class IndexBuilder:
         self,
         node,
         max_chunk_size: int = 1000,
-        tolerance: int = 200,
+        tolerance: int = 300,
     ):
         """
         Split markdown table node by chunk size.
@@ -321,7 +321,8 @@ class IndexBuilder:
                     == "table"
                 ):
                     sub_nodes = self.split_table_node(
-                        node, global_chunk_size, global_chunk_size // 2
+                        node,
+                        global_chunk_size,
                     )
                     split_count += 1
                     for sub_node in sub_nodes:
@@ -376,7 +377,9 @@ class IndexBuilder:
             #
             j = i + 1
 
-            while len(merged_text) < global_chunk_size and j < len(candidate_nodes):
+            while len(merged_text) < global_chunk_size * 1.5 and j < len(
+                candidate_nodes
+            ):
                 nxt = candidate_nodes[j]
 
                 if len(nxt.text.strip()) < 1:
@@ -396,7 +399,7 @@ class IndexBuilder:
                 candidate_text = merged_text + "\n\n" + nxt.text
 
                 # stop if exceeding max chunk size
-                if len(candidate_text) > global_chunk_size:
+                if len(candidate_text) > global_chunk_size * 1.5:
                     break
 
                 merged_text = candidate_text
