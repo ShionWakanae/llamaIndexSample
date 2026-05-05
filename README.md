@@ -82,6 +82,7 @@ RETRIEVAL_BM25_TOP_K = 15                   #BM25召回数量。
 VECTOR_SIMILARITY_TOP_K = 30                #相似内容召回数量。
 
 RETRIEVAL_RERANK_TOP_N = 5                  #重排序后召回数量。
+RETRIEVAL_RERANK_TOP_N_MAX = 10             #最大扩展召回数量。
 
 REF_FILE_PATH = "Path_To"                   #参考文档路径（用于图像显示）。
 ```

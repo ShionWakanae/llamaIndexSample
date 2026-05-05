@@ -2,12 +2,11 @@ import json
 import sys
 import datetime
 
-# import builtins
+import builtins
 from rich import print
 from rich.text import Text
 from rich.live import Live
 
-# from rich.pretty import Pretty
 from rich.json import JSON
 from utils.AsyncSpinner import AsyncSpinner
 from rag.service import service
@@ -123,20 +122,19 @@ if show_details.lower() in ("y", "yes"):
         "retrieval",
         [],
     )
-    # print(Pretty(retrieval, expand_all=True))
-    print(JSON(json.dumps(retrieval, ensure_ascii=False, indent=2)))
+    # print(JSON(json.dumps(retrieval, ensure_ascii=False, indent=2)))
 
-    # for node in source_nodes:
-    #     print(
-    #         ">>>-------------------------------------------------------------------------------<<<"
-    #     )
-    #     print(">>> score:(", node.score, ") metadata：", node.metadata)
-    #     builtins.print(
-    #         node.text.replace(
-    #             "\n",
-    #             " ",
-    #         )
-    #     )
-    #     print()
+    for node in source_nodes:
+        print(
+            ">>>-------------------------------------------------------------------------------<<<"
+        )
+        print(">>> score:(", node.score, ") metadata：", node.metadata)
+        builtins.print(
+            node.text.replace(
+                "\n",
+                " ",
+            )
+        )
+        print()
 
 log("All done ✅")

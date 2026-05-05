@@ -82,6 +82,7 @@ RETRIEVAL_BM25_TOP_K=15                     # Number of BM25 search results to r
 VECTOR_SIMILARITY_TOP_K=30                  # Number of similar content chunks to retrieve
 
 RETRIEVAL_RERANK_TOP_N=5                    # Number of results kept after reranking
+RETRIEVAL_RERANK_TOP_N_MAX = 10             # Max number of results after dynamic select
 
 REF_FILE_PATH="Path_To"                     # Path to reference documents (used for image rendering)
 ```

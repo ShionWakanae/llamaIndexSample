@@ -428,8 +428,26 @@ class RagEngine:
 
         self.reranker = FlagEmbeddingReranker(
             model=os.getenv("RERANKER_MODEL"),
-            top_n=int(os.getenv("RETRIEVAL_RERANK_TOP_N", 5)),
+            top_n=int(os.getenv("RETRIEVAL_RERANK_TOP_N_MAX", 5)),
         )
+
+    def dynamic_rerank_select(self, nodes, base_k=5, score_threshold=0.85, max_k=15):
+        if not nodes:
+            return []
+
+        selected = nodes[:base_k]
+        top_score = nodes[0].score if nodes else 0
+        for node in nodes[base_k:]:
+            if len(selected) >= max_k:
+                break
+
+            # 与最高分接近的都保留
+            if node.score >= top_score * score_threshold:
+                selected.append(node)
+            else:
+                break
+
+        return selected
 
     def query(self, question):
 
@@ -455,47 +473,36 @@ class RagEngine:
             question,
         )
 
-        user_intent = analysis.get(
-            "user_intent",
-            "",
-        )
-
-        presentation_intent = analysis.get(
-            "presentation_intent",
-            "",
-        )
+        user_intent = analysis.get("user_intent", "")
+        presentation_intent = analysis.get("presentation_intent", "")
 
         log(f"[Rewrite] 意图是: {user_intent} ({presentation_intent})")
         log(f"[Rewrite] 关键词: {retrieval_query}")
 
-        #
         # retrieve
-        #
+        nodes_retriever = self.retriever.retrieve(retrieval_query)
+        log(f"[Retrieve] nodes: {len(nodes_retriever)}")
 
-        nodes = self.retriever.retrieve(retrieval_query)
-
-        log(f"[Retrieve] nodes: {len(nodes)}")
-
-        #
         # rerank
-        #
-
-        nodes = self.reranker.postprocess_nodes(
-            nodes,
+        nodes_rerank = self.reranker.postprocess_nodes(
+            nodes_retriever,
             query_str=retrieval_query,
         )
+        log(f"[Rerank] nodes: {len(nodes_rerank)}")
 
-        log(f"[Rerank] nodes: {len(nodes)}")
+        nodes_selected = self.dynamic_rerank_select(
+            nodes=nodes_rerank,
+            base_k=int(os.getenv("RETRIEVAL_RERANK_TOP_N", 5)),
+            score_threshold=0.85,
+            max_k=int(os.getenv("RETRIEVAL_RERANK_TOP_N_MAX", 15)),
+        )
+        log(f"[Dynamic] nodes: {len(nodes_selected)}")
 
-        #
         # build context
-        #
-
         context_parts = []
 
-        for i, node in enumerate(nodes):
+        for i, node in enumerate(nodes_selected):
             text = node.node.text.strip()
-
             context_parts.append(
                 f"""
 [Chunk {i + 1}]
@@ -551,7 +558,7 @@ class RagEngine:
         return {
             "question_type": "RAG",
             "stream": stream,
-            "source_nodes": nodes,
+            "source_nodes": nodes_selected,
         }
 
     def _rough_token_count(self, text: str) -> int:
