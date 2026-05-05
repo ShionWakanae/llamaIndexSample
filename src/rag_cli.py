@@ -129,12 +129,7 @@ if show_details.lower() in ("y", "yes"):
             ">>>-------------------------------------------------------------------------------<<<"
         )
         print(">>> score:(", node.score, ") metadata：", node.metadata)
-        builtins.print(
-            node.text.replace(
-                "\n",
-                " ",
-            )
-        )
+        builtins.print(node.text)
         print()
 
 log("All done ✅")
