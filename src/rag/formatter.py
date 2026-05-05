@@ -126,8 +126,8 @@ def build_debug_html(debug_data):
             </div>
 
             <div>
-                chunk:
-                {item.get("chunk_type")}
+                block:
+                {item.get("block_type")}
             </div>
 
             <div style="margin-top:4px; color:#94a3b8;">

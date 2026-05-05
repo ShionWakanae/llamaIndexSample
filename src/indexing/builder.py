@@ -23,7 +23,65 @@ class IndexBuilder:
         )
         self.debug_mode = False
 
-    def split_table_node(
+        self.block_handlers = {
+            "table": self._handle_table,
+            "text": self._handle_text,
+            "code": self._handle_code,
+            "math": self._handle_math,
+            "ocr": self._handle_ocr,
+        }
+
+    def _split_large_text_node(self, node):
+        text = node.text
+        metadata = dict(node.metadata)
+
+        max_size = global_chunk_size
+        tolerance = global_chunk_overlap
+
+        lines = text.splitlines()
+        base_line_start = metadata.get("line_start", 0)
+
+        result = []
+        current_lines = []
+        current_start = 0
+
+        def flush(end_idx):
+            if not current_lines:
+                return
+            chunk_text = "\n".join(current_lines)
+            new_meta = dict(metadata)
+            new_meta["line_start"] = base_line_start + current_start
+            new_meta["line_end"] = base_line_start + end_idx
+
+            result.append(
+                TextNode(
+                    text=chunk_text,
+                    metadata=new_meta,
+                )
+            )
+
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            tentative = current_lines + [line]
+            tentative_text = "\n".join(tentative)
+
+            if current_lines and len(tentative_text) > max_size + tolerance:
+                # 优先在“段落边界”切
+                flush(i)
+                current_lines = [line]
+                current_start = i
+            else:
+                if not current_lines:
+                    current_start = i
+                current_lines.append(line)
+
+            i += 1
+
+        flush(len(lines))
+        return result
+
+    def _split_table_node(
         self,
         node,
         max_chunk_size: int = 1000,
@@ -41,20 +99,16 @@ class IndexBuilder:
         """
 
         text = node.text or ""
-
         lines = text.splitlines()
 
         if len(lines) < 3:
             return [node]
 
-        #
         # locate separator line
-        #
         separator_idx = None
 
         for i, line in enumerate(lines):
             stripped = line.strip()
-
             if "|" in stripped and "-" in stripped:
                 separator_idx = i
                 break
@@ -67,30 +121,21 @@ class IndexBuilder:
             return [node]
 
         header_idx = separator_idx - 1
-
         prefix_lines = lines[:header_idx]
-
         header_line = lines[header_idx]
-
         separator_line = lines[separator_idx]
-
         data_lines = lines[separator_idx + 1 :]
-
         if not data_lines:
             return [node]
 
         metadata = dict(node.metadata)
-
         base_line_start = metadata.get(
             "line_start",
             0,
         )
-
         result_nodes = []
 
-        #
         # fixed part size
-        #
         fixed_lines = [
             *prefix_lines,
             header_line,
@@ -98,9 +143,7 @@ class IndexBuilder:
         ]
 
         fixed_text = "\n".join(fixed_lines)
-
         current_rows = []
-
         current_start_idx = 0
 
         def flush_rows(end_idx):
@@ -117,19 +160,12 @@ class IndexBuilder:
             ]
 
             chunk_text = "\n".join(chunk_lines)
-
             first_data_line = separator_idx + 1 + current_start_idx
-
             last_data_line = separator_idx + end_idx
-
             new_metadata = dict(metadata)
-
             new_metadata["line_start"] = base_line_start + first_data_line
-
             new_metadata["line_end"] = base_line_start + last_data_line + 1
-
             new_metadata["table_row_start"] = current_start_idx
-
             new_metadata["table_row_end"] = end_idx - 1
 
             result_nodes.append(
@@ -138,15 +174,11 @@ class IndexBuilder:
                     metadata=new_metadata,
                 )
             )
-
             current_rows = []
 
-        #
         # dynamic split
-        #
         for idx, row in enumerate(data_lines):
             tentative_rows = current_rows + [row]
-
             tentative_text = "\n".join(
                 [
                     fixed_text,
@@ -154,25 +186,45 @@ class IndexBuilder:
                 ]
             )
 
-            #
             # soft limit
-            #
             if current_rows and len(tentative_text) > max_chunk_size + tolerance:
                 flush_rows(idx)
-
                 current_start_idx = idx
-
                 current_rows = [row]
-
             else:
                 current_rows.append(row)
 
-        #
         # final flush
-        #
         flush_rows(len(data_lines))
-
         return result_nodes
+
+    def _handle_table(self, node):
+        if len(node.text) > global_chunk_size:
+            sub_nodes = self._split_table_node(node, global_chunk_size)
+            return sub_nodes, len(sub_nodes) > 1
+        return [node], False
+
+    def _handle_text(self, node):
+        if len(node.text) > global_chunk_size:
+            sub_nodes = self._split_large_text_node(node)
+            return sub_nodes, len(sub_nodes) > 1
+        return [node], False
+
+    def _handle_code(self, node):
+        # 暂不拆 code，避免破坏语义
+        return [node], False
+
+    def _handle_math(self, node):
+        return [node], False
+
+    def _handle_ocr(self, node):
+        return [node], False
+
+    def _dispatch_by_block_type(self, node, block_type):
+        handler = self.block_handlers.get(block_type)
+        if handler:
+            return handler(node)
+        return [node], False
 
     def build_nodes(self, doc_path, debug_mode: bool):
         self.debug_mode = debug_mode
@@ -313,23 +365,12 @@ class IndexBuilder:
             # large section
             else:
                 # Large table split
-                if (
-                    node.metadata.get(
-                        "block_type",
-                        "",
-                    )
-                    == "table"
-                ):
-                    sub_nodes = self.split_table_node(
-                        node,
-                        global_chunk_size,
-                    )
+                block_type = node.metadata.get("block_type", "text")
+                sub_nodes, did_split = self._dispatch_by_block_type(node, block_type)
+                if did_split:
                     split_count += 1
-                    for sub_node in sub_nodes:
-                        append_candidate(sub_node.text, sub_node.metadata, header)
-                # other chunk
-                else:
-                    append_candidate(node.text, node.metadata, header)
+                for sub_node in sub_nodes:
+                    append_candidate(sub_node.text, sub_node.metadata, header)
 
         if self.debug_mode:
             print(f"== Large nodes split:{split_count}")
@@ -377,7 +418,7 @@ class IndexBuilder:
             #
             j = i + 1
 
-            while len(merged_text) < global_chunk_size * 1.5 and j < len(
+            while len(merged_text) < (global_chunk_size * 1.5) and j < len(
                 candidate_nodes
             ):
                 nxt = candidate_nodes[j]
@@ -399,7 +440,7 @@ class IndexBuilder:
                 candidate_text = merged_text + "\n\n" + nxt.text
 
                 # stop if exceeding max chunk size
-                if len(candidate_text) > global_chunk_size * 1.5:
+                if len(candidate_text) > (global_chunk_size * 1.5):
                     break
 
                 merged_text = candidate_text

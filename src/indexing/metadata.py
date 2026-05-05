@@ -28,10 +28,10 @@ def enrich_metadata(node):
     #
     # defaults
     #
-    meta.setdefault(
-        "chunk_type",
-        "text",
-    )
+    # meta.setdefault(
+    #     "chunk_type",
+    #     "text",
+    # )
 
     meta.setdefault(
         "has_error_code",
@@ -111,26 +111,26 @@ def enrich_metadata(node):
     # chunk_type_rules
     #
 
-    for rule in RULES.get(
-        "chunk_type_rules",
-        [],
-    ):
-        target = rule.get(
-            "target",
-            "text",
-        )
+    # for rule in RULES.get(
+    #     "chunk_type_rules",
+    #     [],
+    # ):
+    #     target = rule.get(
+    #         "target",
+    #         "text",
+    #     )
 
-        source = text
+    #     source = text
 
-        if target == "header":
-            source = header
+    #     if target == "header":
+    #         source = header
 
-        if match_patterns(
-            source,
-            rule["match"],
-        ):
-            meta["chunk_type"] = rule["value"]
+    #     if match_patterns(
+    #         source,
+    #         rule["match"],
+    #     ):
+    #         meta["chunk_type"] = rule["value"]
 
-            break
+    #         break
 
     return meta

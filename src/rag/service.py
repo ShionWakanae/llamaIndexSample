@@ -99,8 +99,8 @@ class RagService:
                     "line_end": metadata.get(
                         "line_end",
                     ),
-                    "chunk_type": metadata.get(
-                        "chunk_type",
+                    "block_type": metadata.get(
+                        "block_type",
                     ),
                     "text_length": metadata.get(
                         "text_length",
