@@ -474,12 +474,15 @@ def main():
         }
 
         .final-markdown th {
-            background: #2a2a2a;
+            background: #313131;
             font-weight: bold;
         }
-
-        .final-markdown tr:nth-child(even) {
+        .final-markdown tr:nth-child(even) td {
             background: #222222;
+        }
+
+        .final-markdown tr:nth-child(odd) td {
+            background: #1b1b1b;
         }
         mark {
             background: #ffe066;
