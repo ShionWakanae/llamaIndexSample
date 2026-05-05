@@ -45,7 +45,7 @@ log(f"Question: [bold bright_yellow]{quest_str}[/]")
 #     print(f"\n[BM25 {i}] score={node.score}")
 #     print(node.text[:300])
 
-
+debug_data = None
 spinner = AsyncSpinner()
 timing = {}
 with Live(Text("....", style="yellow"), refresh_per_second=2) as live:
@@ -83,18 +83,19 @@ with Live(Text("....", style="yellow"), refresh_per_second=2) as live:
 
 print()
 print()
-print("Reference:")
-print()
-all_files = []
-j = 0
-for i, node in enumerate(source_nodes):
-    # print(node.metadata)
-    file_name = node.metadata.get("file_name")
-    if file_name and (file_name not in all_files):
-        all_files.append(file_name)
-        j = j + 1
-        print(f"({j}) [bright_blue]{file_name}[/]")
-print()
+if source_nodes:
+    print("Reference:")
+    print()
+    all_files = []
+    j = 0
+    for i, node in enumerate(source_nodes):
+        # print(node.metadata)
+        file_name = node.metadata.get("file_name")
+        if file_name and (file_name not in all_files):
+            all_files.append(file_name)
+            j = j + 1
+            print(f"({j}) [bright_blue]{file_name}[/]")
+    print()
 
 log("Answer completed")
 log(
@@ -114,22 +115,23 @@ log(
 log(f"Total token usage: {usage['total']['total_tokens']}")
 print()
 
-show_details = input("你要查看具体的命中信息吗？[y/N]: ").strip().lower()
-if show_details.lower() in ("y", "yes"):
-    log("命中的内容:")
+if debug_data:
+    show_details = input("你要查看具体的命中信息吗？[y/N]: ").strip().lower()
+    if show_details.lower() in ("y", "yes"):
+        log("命中的内容:")
 
-    retrieval = debug_data.get(
-        "retrieval",
-        [],
-    )
-    # print(JSON(json.dumps(retrieval, ensure_ascii=False, indent=2)))
-
-    for node in source_nodes:
-        print(
-            ">>>-------------------------------------------------------------------------------<<<"
+        retrieval = debug_data.get(
+            "retrieval",
+            [],
         )
-        print(">>> score:(", node.score, ") metadata：", node.metadata)
-        builtins.print(node.text)
-        print()
+        # print(JSON(json.dumps(retrieval, ensure_ascii=False, indent=2)))
+
+        for node in source_nodes:
+            print(
+                ">>>-------------------------------------------------------------------------------<<<"
+            )
+            print(">>> score:(", node.score, ") metadata：", node.metadata)
+            builtins.print(node.text)
+            print()
 
 log("All done ✅")

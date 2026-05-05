@@ -456,6 +456,7 @@ class RagEngine:
             "question_type",
             "RAG",
         )
+        # print(question_type)
         if question_type != "RAG":
             return {
                 "question_type": question_type,

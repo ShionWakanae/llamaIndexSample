@@ -695,7 +695,7 @@ def main():
                         source_nodes = []
                         got_answer = False
                         first_token = False
-
+                        timing = {}
                         # background stream
                         queue = Queue()
 
@@ -720,6 +720,7 @@ def main():
 
                             # token
                             if event["type"] == "token":
+                                got_answer = True
                                 if not first_token:
                                     log("Streaming...")
                                 first_token = True
@@ -741,6 +742,7 @@ def main():
 
                             # debug
                             elif event["type"] == "debug":
+                                timing = event["content"].get("timing", {})
                                 nonlocal debug_panel_shown
                                 if not debug_panel_shown:
                                     right_column.style(
@@ -773,6 +775,21 @@ def main():
                             partial_text += accumulated
 
                         log("Answer completed")
+                        log(
+                            f"Query: {timing.get('query_ms', 0)} ms, LLM: {timing.get('llm_ms', 0)} ms, Total: {timing.get('total_ms', 0)} ms"
+                        )
+                        usage = service.get_token_usage()
+                        src = usage["rewrite"]["source"]
+                        model = usage["rewrite"]["model"]
+                        log(
+                            f"Rewrite token in: {usage['rewrite']['prompt_tokens']}, out:{usage['rewrite']['completion_tokens']}, from: {model if src == 'llm' else f'{model} [bold red]{src}[/]!!!'}"
+                        )
+                        src = usage["answer"]["source"]
+                        model = usage["answer"]["model"]
+                        log(
+                            f"Answers token in: {usage['answer']['prompt_tokens']}, out:{usage['answer']['completion_tokens']}, from: {model if src == 'llm' else f'{model} [bold red]{src}[/]!!!'}"
+                        )
+                        log(f"Total token usage: {usage['total']['total_tokens']}")
                         print()
 
                         # fallback
