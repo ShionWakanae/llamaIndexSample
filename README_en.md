@@ -70,6 +70,7 @@ Copy `.env_sample` to `.env`, then update the API endpoint, API key, and model c
 LLM_API_BASE=https://api.openai.com/v1      # OpenAI or OpenAI-compatible API endpoint (local or remote)
 LLM_API_KEY=sk-xxxxx                        # API key
 LLM_MODEL=gpt-4.1-mini                      # Model name
+LLM_MODEL_SMALL=                            # Small model for query rewrite
 
 EMBEDDING_MODEL=BAAI/bge-m3                 # Automatically downloaded from Hugging Face if needed.
 RERANKER_MODEL=BAAI/bge-reranker-v2-m3      # Automatically downloaded from Hugging Face if needed.
