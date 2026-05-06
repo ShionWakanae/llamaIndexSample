@@ -48,7 +48,7 @@ class RagService:
 
         query_start = time.perf_counter()
         engine.usage.reset()
-        response = engine.query(question)
+        response = engine.query(question, force_rag)
         question_type = response.get(
             "question_type",
             "RAG",

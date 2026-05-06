@@ -673,27 +673,20 @@ setInterval(checkScroll, 300);
                 )
                 with chat_scroll:
                     for item in chat_history:
-                        with ui.row().classes("w-full justify-end"):
-                            with ui.chat_message(
-                                sent=True,
-                                name="用户🧑",
-                                stamp=f"\U0001f550{datetime.datetime.now().strftime('%H:%M:%S')}",
-                            ).style(
-                                """
-                                max-width: 80%;
-                                """
-                            ):
-                                ui.markdown(item["question"])
+                        if not item["confirm"]:
+                            with ui.row().classes("w-full justify-end"):
+                                with ui.chat_message(
+                                    sent=True,
+                                    name="用户🧑",
+                                    stamp=f"\U0001f550{datetime.datetime.now().strftime('%H:%M:%S')}",
+                                ).style("max-width: 80%;"):
+                                    ui.markdown(item["question"])
 
                         with ui.column().classes("w-full items-start"):
                             with ui.chat_message(
                                 sent=False,
                                 name="🧠历史回复",
-                            ).style(
-                                """
-                                max-width: 80%;
-                                """
-                            ):
+                            ).style("max-width: 80%;"):
                                 html = render_markdown_html(item["answer"])
                                 message_id += 1
                                 ui.html(html).props(
@@ -711,7 +704,11 @@ setInterval(checkScroll, 300);
                                 }}
                                 """)
                             if item["sources"]:
-                                with ui.row().classes("gap-2 mt-2"):
+                                with (
+                                    ui.row()
+                                    .classes("gap-2 mt-2")
+                                    .style("max-width: 80%;")
+                                ):
                                     for source in item["sources"]:
                                         ui.button(
                                             source["file_name"],
@@ -802,11 +799,7 @@ setInterval(checkScroll, 300);
                                     sent=True,
                                     name="用户🧑",
                                     stamp=f"\U0001f550{datetime.datetime.now().strftime('%H:%M:%S')}",
-                                ).style(
-                                    """
-                                    max-width: 80%;
-                                    """
-                                ):
+                                ).style("max-width: 80%;"):
                                     ui.markdown(message)
 
                         # 助理消息
@@ -814,11 +807,7 @@ setInterval(checkScroll, 300);
                             with ui.chat_message(
                                 sent=False,
                                 name="\U00002728智能助理",
-                            ).style(
-                                """
-                                max-width: 80%;
-                                """
-                            ):
+                            ).style("max-width: 80%;"):
                                 wait_html = markdown.markdown(
                                     "\U000023f3正在检索资料，请稍候……",
                                 )
@@ -990,13 +979,16 @@ setInterval(checkScroll, 300);
                     history_item = {
                         "question": message,
                         "answer": partial_text,
+                        "confirm": from_confirm,
                         "sources": [],
                     }
 
                     if should_show_sources:
                         shown_files = set()
                         with sources_container:
-                            with ui.row().classes("gap-2 mt-2"):
+                            with (
+                                ui.row().classes("gap-2 mt-2").style("max-width: 80%;")
+                            ):
                                 for file_name, file_info in file_map.items():
                                     file_path = file_info["path"]
                                     hits = file_info["hits"]

@@ -139,10 +139,9 @@ class DictEngine:
 
     def query(self, text: str):
         lowered = text.lower()
-
         matches = []
 
-        # 1️⃣ 找所有命中
+        # 找所有命中
         for key, entries in self.dict_map.items():
             start = lowered.find(key)
             if start != -1:
@@ -151,23 +150,21 @@ class DictEngine:
         if not matches:
             return None
 
-        # 2️⃣ 按长度排序（长词优先）
+        # 按长度排序（长词优先）
         matches.sort(key=lambda x: len(x[0]), reverse=True)
-
         selected = []
         occupied = [False] * len(lowered)
 
-        # 3️⃣ 覆盖过滤
+        # 覆盖过滤
         for key, start, end, entries in matches:
             if any(occupied[start:end]):
                 continue
 
             selected.append(entries)
-
             for i in range(start, end):
                 occupied[i] = True
 
-        # 4️⃣ flatten
+        # flatten
         hits = []
         for entries in selected:
             hits.extend(entries)

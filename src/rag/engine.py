@@ -449,7 +449,7 @@ class RagEngine:
 
         return selected
 
-    def query(self, question):
+    def query(self, question, force_rag):
 
         analysis = self.navigator.analyze_query(question, self)
         question_type = analysis.get(
@@ -457,7 +457,7 @@ class RagEngine:
             "RAG",
         )
         # print(question_type)
-        if question_type != "RAG":
+        if not force_rag and question_type != "RAG":
             return {
                 "question_type": question_type,
                 "message": (
@@ -476,6 +476,8 @@ class RagEngine:
 
         user_intent = analysis.get("user_intent", "")
         presentation_intent = analysis.get("presentation_intent", "")
+        if not retrieval_query:
+            retrieval_query = question
 
         log(f"[Rewrite] 意图是: {user_intent} ({presentation_intent})")
         log(f"[Rewrite] 关键词: {retrieval_query}")
