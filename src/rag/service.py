@@ -1,17 +1,34 @@
 import time
 
 from rag.engine import engine
+from rag.dict import dict_engine
 
 
 class RagService:
     def get_token_usage(self):
         return engine.usage.to_dict()
 
-    def stream_answer(
-        self,
-        question,
-    ):
+    def stream_answer(self, question, force_rag=False):
         total_start = time.perf_counter()
+        if not force_rag:
+            dict_result = dict_engine.query(question)
+            if dict_result:
+                md = dict_engine.format_markdown(dict_result["entries"])
+
+                yield {
+                    "type": "token",
+                    "content": md,
+                }
+
+                yield {
+                    "type": "status",
+                    "got_answer": True,
+                    "need_rag_confirm": True,
+                    "original_question": question,
+                    "source": "dict",
+                }
+                return
+
         query_start = time.perf_counter()
         engine.usage.reset()
         response = engine.query(question)
@@ -132,6 +149,7 @@ class RagService:
         yield {
             "type": "status",
             "got_answer": got_answer,
+            "source": "llm",
         }
 
 

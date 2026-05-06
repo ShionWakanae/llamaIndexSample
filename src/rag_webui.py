@@ -5,6 +5,7 @@ from queue import Queue
 import markdown
 from nicegui import ui
 from nicegui import app
+from nicegui import context
 from rich import print
 import re
 from rag.service import service
@@ -133,8 +134,8 @@ def build_highlighted_markdown(content, hits):
 chat_history = []
 
 
-def auto_scroll_chat():
-    ui.run_javascript(
+def auto_scroll_chat(client):
+    client.run_javascript(
         """
         const area =
         document.querySelector(
@@ -152,6 +153,46 @@ def auto_scroll_chat():
 @ui.page("/")
 def main():
     debug_panel_shown = False
+
+    def continue_rag(question: str):
+        client = context.client
+
+        asyncio.create_task(
+            send_message(
+                question,
+                force_rag=True,
+                from_confirm=True,
+                client=client,
+            )
+        )
+
+    def show_rag_confirm(question: str):
+        with ui.dialog().props("persistent") as dialog:
+            with ui.card().style(
+                """
+                width: 400px;
+                max-width: 90vw;
+                background: #313131;
+                """
+            ):
+                ui.markdown("### 是否继续检索")
+                ui.label("🤔字典查询已完成，需要从知识库中继续获取更多的信息吗？")
+
+                with ui.row().classes("w-full justify-end gap-2 mt-4"):
+                    ui.button(
+                        "否",
+                        on_click=dialog.close,
+                    ).props("flat")
+
+                    ui.button(
+                        "是",
+                        on_click=lambda: (
+                            dialog.close(),
+                            continue_rag(question),
+                        ),
+                    ).props("color=primary")
+
+        dialog.open()
 
     def show_file_preview(name, path, hits):
 
@@ -589,7 +630,7 @@ def main():
                                 width: 100%;
                                 """
                             )
-                            ui.run_javascript(f"""
+                            context.client.run_javascript(f"""
                             if (window.MathJax) {{
                                 MathJax.typesetPromise();
                                 const el = document.getElementById("assistant-msg{message_id}");
@@ -624,10 +665,19 @@ def main():
                     .classes("flex-1")
                 )
 
-                async def send_message():
+                async def send_message(
+                    message=None,
+                    force_rag=False,
+                    from_confirm=False,
+                    client=None,
+                ):
 
                     try:
-                        message = (input_box.value or "").strip()
+                        if client is None:
+                            client = context.client
+
+                        if message is None:
+                            message = (input_box.value or "").strip()
 
                         if not message:
                             return
@@ -639,18 +689,19 @@ def main():
 
                         # messages
                         with chat_scroll:
-                            # 用户消息：右边
-                            with ui.row().classes("w-full justify-end"):
-                                with ui.chat_message(
-                                    sent=True,
-                                    name="用户🧑",
-                                    stamp=f"\U0001f550{datetime.datetime.now().strftime('%H:%M:%S')}",
-                                ).style(
-                                    """
-                                    max-width: 80%;
-                                    """
-                                ):
-                                    ui.markdown(message)
+                            if not from_confirm:
+                                # 用户消息：右边
+                                with ui.row().classes("w-full justify-end"):
+                                    with ui.chat_message(
+                                        sent=True,
+                                        name="用户🧑",
+                                        stamp=f"\U0001f550{datetime.datetime.now().strftime('%H:%M:%S')}",
+                                    ).style(
+                                        """
+                                        max-width: 80%;
+                                        """
+                                    ):
+                                        ui.markdown(message)
 
                             # 助理消息
                             with ui.column().classes("w-full items-start"):
@@ -683,7 +734,7 @@ def main():
                                         )
                                     )
                                 sources_container = ui.row().classes("gap-2 mt-0")
-                                auto_scroll_chat()
+                                auto_scroll_chat(client)
 
                         # reset status
                         debug_panel.content = """
@@ -697,6 +748,7 @@ def main():
                         partial_text = ""
                         source_nodes = []
                         got_answer = False
+                        dct_answer = False
                         first_token = False
                         timing = {}
                         # background stream
@@ -704,7 +756,7 @@ def main():
 
                         def worker():
                             try:
-                                for event in service.stream_answer(message):
+                                for event in service.stream_answer(message, force_rag):
                                     queue.put(event)
                             finally:
                                 queue.put(None)
@@ -737,7 +789,7 @@ def main():
                                     assistant_message.content = rendered_html
                                     assistant_message.update()
                                     # auto scroll
-                                    auto_scroll_chat()
+                                    auto_scroll_chat(client)
 
                             # sources
                             elif event["type"] == "sources":
@@ -772,7 +824,10 @@ def main():
 
                             # status
                             elif event["type"] == "status":
+                                dct_answer = event["source"] == "dict"
                                 got_answer = event["got_answer"]
+                                if event.get("need_rag_confirm"):
+                                    show_rag_confirm(event.get("original_question"))
 
                         if accumulated:
                             partial_text += accumulated
@@ -781,18 +836,19 @@ def main():
                         log(
                             f"Query: {timing.get('query_ms', 0)} ms, LLM: {timing.get('llm_ms', 0)} ms, Total: {timing.get('total_ms', 0)} ms"
                         )
-                        usage = service.get_token_usage()
-                        src = usage["rewrite"]["source"]
-                        model = usage["rewrite"]["model"]
-                        log(
-                            f"Rewrite token in: {usage['rewrite']['prompt_tokens']}, out:{usage['rewrite']['completion_tokens']}, from: {model if src == 'llm' else f'{model} [bold red]{src}[/]!!!'}"
-                        )
-                        src = usage["answer"]["source"]
-                        model = usage["answer"]["model"]
-                        log(
-                            f"Answers token in: {usage['answer']['prompt_tokens']}, out:{usage['answer']['completion_tokens']}, from: {model if src == 'llm' else f'{model} [bold red]{src}[/]!!!'}"
-                        )
-                        log(f"Total token usage: {usage['total']['total_tokens']}")
+                        if not dct_answer:
+                            usage = service.get_token_usage()
+                            src = usage["rewrite"]["source"]
+                            model = usage["rewrite"]["model"]
+                            log(
+                                f"Rewrite token in: {usage['rewrite']['prompt_tokens']}, out:{usage['rewrite']['completion_tokens']}, from: {model if src == 'llm' else f'{model} [bold red]{src}[/]!!!'}"
+                            )
+                            src = usage["answer"]["source"]
+                            model = usage["answer"]["model"]
+                            log(
+                                f"Answers token in: {usage['answer']['prompt_tokens']}, out:{usage['answer']['completion_tokens']}, from: {model if src == 'llm' else f'{model} [bold red]{src}[/]!!!'}"
+                            )
+                            log(f"Total token usage: {usage['total']['total_tokens']}")
                         print()
 
                         # fallback
@@ -830,7 +886,7 @@ def main():
                         rendered_html = render_markdown_html(partial_text)
                         assistant_message.content = rendered_html
                         assistant_message.update()
-                        ui.run_javascript(f"""
+                        client.run_javascript(f"""
                         if (window.MathJax) {{
                             MathJax.typesetPromise();
                             const el = document.getElementById("assistant-msg{message_id}");
@@ -879,7 +935,7 @@ def main():
                         assistant_message.content = rendered_html
                         assistant_message.update()
                     finally:
-                        auto_scroll_chat()
+                        auto_scroll_chat(client)
                         send_button.enable()
                         input_box.enable()
 

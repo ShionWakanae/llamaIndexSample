@@ -20,50 +20,102 @@ I am experimenting with building applications based on LlamaIndex. Like this lit
 
 
 ## Project Features
-### (1) Building the Knowledge Base
-1. Custom heading structure parser that chunks Markdown files based on their heading hierarchy.
-1. Custom content-aware parser that chunks individual sections based on content type, including text, tables, code blocks, etc.
-1. Splitting large tables while retaining the header, and merging small chunks from parallel sections.
-1. Adds metadata to chunks and injects heading information into chunk text.
-1. Enhances metadata according to heading, content, and predefined metadata rules (still under development and not fully enabled yet...).
-1. Handles Chinese word segmentation and normalizes single carriage returns / CRLF line endings into standard line breaks.
-1. Uses CUDA acceleration for embedding generation. 
-   
+
+### (1) Knowledge Base Construction
+1. Build a vector database required for RAG, with data stored in `project/storage` (LlamaIndex default).
+   * Supports Markdown files with well-structured sections.
+   * A custom header parser splits Markdown files based on their heading hierarchy.
+   * A custom content-aware parser further chunks sections based on text, tables, code blocks, etc.
+   * Adds metadata to each chunk (original file path, filename, start/end line numbers).
+   * Splits large tables while preserving headers, with metadata indicating row ranges in the original table.
+   * Splits large text blocks based on paragraphs and line breaks.
+   * ⚠️ _Other types of oversized data are not yet handled._ Chunks may exceed limits (work in progress).
+   * Injects section headers into chunked text.
+   * Merges small chunks from parallel sections.
+   * Enriches metadata based on headers, content, and predefined rules (not yet used in querying; under consideration).
+   * Uses CUDA acceleration for embedding generation.
+
+2. Build a fast lookup dictionary, stored in `project/storage/dict/` (manual file placement; no indexing required).
+   * Supports tab-separated text files, one entry per line.
+   * The first field is the keyword; subsequent fields are definitions.
+   * Duplicate keywords are supported (multiple lines can define the same term).
+   * Designed for domain-specific needs such as terminology and structured fields, enabling fast lookup.
+
+---
+
 ### (2) Query and Retrieval
-1. Uses hybrid retrieval combining LLM semantic search and BM25 keyword search.
-1. Reranks retrieved results.
-1. Provides a spinner and streaming output for impatient users.
-1. Prevents empty responses when the LLM fails to generate an answer. 
-1. Optional printing of retrieval hit details for debugging.
-1. Supports both command-line and simple WebUI query interfaces.
+
+1. Fast dictionary lookup
+   * Performs millisecond-level dictionary lookup for single-word queries.
+   * Supports querying multiple keywords in a simple sentence (e.g., `What are CW and hold?`, `IMPI IMPU IMSI MSISDN`).
+   * Falls back to RAG retrieval if no dictionary match is found.
+   * If matched, prompts whether to continue searching the knowledge base (WEB only).
+
+2. Vector database retrieval
+   * Supports both local and online LLMs; configurable for different roles.
+   * Improves recall accuracy via intent recognition and keyword enhancement.
+   * Combines semantic retrieval (LLM) with BM25 keyword search.
+   * Applies reranking to retrieved results.
+   * Dynamically expands selection after reranking.
+
+3. Query interface
+   * Supports both WEB UI and CLI.
+   * Includes spinner and streaming output for responsiveness.
+   * WEB UI displays reference documents, allows reading originals, and highlights relevant segments.
+   * Supports displaying images referenced within Markdown (work in progress).
+
+4. Debugging and feedback
+   * This project is intended as a RAG reference rather than a production tool.
+   * CLI can optionally print detailed retrieval information.
+   * WEB UI includes a debug panel with basic retrieval insights.
+   * Modify code as needed to add debug information for data correction or bug reporting.
+
+---
 
 ## Installation
-1. Clone the repository to a local directory: 
-`git clone https://github.com/ShionWakanae/llamaIndexSample.git`
-2. Create a virtual environment in the project directory: `python -m venv venv`
-3. Activate the virtual environment: `.\venv\scripts\activate`
-4. Install dependencies: `pip install -r requirements.txt`
+
+1. Clone the repository:
+   `git clone https://github.com/ShionWakanae/llamaIndexSample.git`
+
+2. Create a virtual environment:
+   `python -m venv venv`
+
+3. Activate the environment:
+   `.\venv\scripts\activate`
+
+4. Install dependencies:
+   `pip install -r requirements.txt`
+
+---
 
 ## Usage
-### (0) Convert Documents to Markdown Format
-> [!Important]
-> To stay focused on indexing and retrieval (including debugging), only Markdown documents are currently supported.
-> Before proceeding, convert your documents into Markdown (`.md`) format first. You can use tools such as Microsoft's [markitdown](https://github.com/microsoft/markitdown), [pymupdf4llm](https://github.com/pymupdf/PyMuPDF4LLM), [docling](https://github.com/docling-project/docling), [marker](https://github.com/datalab-to/marker), and others.
->
-> For usage examples of markitdown, refer to [`MarkItDownSample.py`](./src/ref/MarkItDownSample.py).
-> This reference file cannot run directly within this project's environment. Please follow the instructions in the [markitdown](https://github.com/microsoft/markitdown) documentation to set up its runtime environment.
-> 
-> The main purpose of the sample script is to process images embedded in Word documents, such as diagrams, flowcharts, and architecture diagrams, converting them into corresponding text descriptions. Unfortunately, using a single prompt for many different image types does not work very well. A better approach would involve differentiated workflows or multiple agents specialized for different image categories. That is a separate topic with many challenges of its own. In any case, this is only a sample implementation.
-> 
-> Please manually review the converted `.md` files to ensure the formatting is correct, the document structure is complete, tables are properly aligned, image descriptions are accurate, and no table of contents (TOC) is included.
-> The more manual effort invested early on, the more intelligent the system becomes later.
-> 
-> The sample command for converting all `.docx`, `.xlsx`, and `.pdf` files in a directory into `.md` files is:
-``` shell
-Python .\MarkItDownSample.py "Input dir" "Output dir"
-```
 
-### (1) Configure the LLM and Models
+### (0) Convert Documents to Markdown
+
+> [!Important]  
+> To focus on indexing and retrieval (including debugging), only Markdown format is currently supported.  
+> Convert documents to `.md` format before proceeding. Tools include: markitdown, pymupdf4llm, docling, marker, etc.  
+>
+> Refer to `MarkItDownSample.py` for usage examples.  
+> This sample does not run directly in this project; follow the official setup instructions.  
+>
+> The sample mainly demonstrates handling images in Word (e.g., diagrams, flowcharts, architecture diagrams), converting them into textual descriptions. However, a single prompt does not perform well across diverse image types. A multi-agent pipeline would be more effective—this is a separate topic with its own challenges.  
+>
+> Manually review converted `.md` files to ensure:
+> - Correct formatting  
+> - Proper section structure  
+> - Tables are aligned  
+> - Image descriptions are accurate  
+> - No table of contents (TOC)  
+>
+> Initial manual effort improves downstream automation quality.
+
+Example command:
+    python .\MarkItDownSample.py "Input dir" "Output dir"
+
+---
+
+### (1) Configure LLM and Models
 
 Copy `.env_sample` to `.env`, then update the API endpoint, API key, and model configurations (local or remote). The remaining parameters can be left unchanged initially and adjusted later as needed. An example configuration is shown below:
 ``` ini
@@ -92,6 +144,10 @@ REF_FILE_PATH="Path_To"                     # Path to reference documents (used 
 Index `.md` files:
 ``` shell
 python .\src\index_cli.py 'Your Markdown directory'
+```
+ℹ️ It is recommended to first use the debug parameter to inspect how the documents are chunked, and proceed with formal indexing only after confirming there are no issues.
+``` shell
+python .\src\index_cli.py '你的MD文件目录' --debug    #print log only
 ```
 
 If you are using an NVIDIA GPU, CUDA is recommended. Otherwise, comment out the `device="cuda",` line.  
@@ -131,6 +187,8 @@ On the right is the debugging information. For more detailed information, please
 Click to watch the videos on Bilibili:
 
 [![BM25 Demo](https://i2.hdslb.com/bfs/archive/5bf16a799cc21268d626462a89255220daf10ef4.jpg@308w_174h)](https://www.bilibili.com/video/BV1rb9zB5EAD/) [![Index and RAG Demo](https://i2.hdslb.com/bfs/archive/728ece5712492028faf11833f9fada09f2bf645a.jpg@308w_174h)](https://www.bilibili.com/video/BV1po9yBhEFH/)  
+
+More videos are available on my channel.
 
 
 ## Tech Stack
