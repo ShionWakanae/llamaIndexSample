@@ -577,430 +577,445 @@ def main():
             )
 
     with (
-        ui.row()
+        ui.column()
         .classes("w-full no-wrap")
         .style(
             """
-        height: 100vh;
-        max-width: 1440px;
-        margin: 0 auto;
-        padding: 12px;
-        gap: 12px;
-        overflow: hidden;
-        """
-        )
-    ):
-        # left
-        left_column = ui.column().style(
-            """
-            flex: 1;
-            height: 100%;
+            height: 100vh;
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 4px;
+            gap: 4px;
             overflow: hidden;
             """
         )
-        with left_column:
-            ui.label("企业知识库问答").style(
-                "height: 24px; line-height: 24px; font-size: 14px; margin: 0;"
-            )
-            # chat area
-            chat_scroll = (
-                ui.column()
-                .classes("w-full chat-area")
-                .style(
-                    """
-                flex: 1;
-                overflow-y: auto;
-                background: #1b1b1b;
+    ):
+        ui.label("企业知识库问答").style(
+            "height: 20px; line-height: 20px; font-size: 18px; margin: 0;"
+        )
 
-                border: 1px solid #3a3a3a;
-                border-radius: 8px;
-
-                padding: 12px;
+        with (
+            ui.row()
+            .classes("w-full no-wrap")
+            .style(
                 """
-                )
+            height: 100%;
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 4px;
+            gap: 4px;
+            overflow: hidden;
+            """
             )
-            with chat_scroll:
-                for item in chat_history:
-                    with ui.row().classes("w-full justify-end"):
-                        with ui.chat_message(
-                            sent=True,
-                            name="用户🧑",
-                            stamp=f"\U0001f550{datetime.datetime.now().strftime('%H:%M:%S')}",
-                        ).style(
-                            """
-                            max-width: 80%;
-                            """
-                        ):
-                            ui.markdown(item["question"])
+        ):
+            # left
+            left_column = ui.column().style(
+                """
+                flex: 1;
+                height: 100%;
+                overflow: hidden;
+                """
+            )
+            with left_column:
+                # chat area
+                chat_scroll = (
+                    ui.column()
+                    .classes("w-full chat-area")
+                    .style(
+                        """
+                    flex: 1;
+                    overflow-y: auto;
+                    background: #1b1b1b;
 
-                    with ui.column().classes("w-full items-start"):
-                        with ui.chat_message(
-                            sent=False,
-                            name="🧠历史回复",
-                        ).style(
-                            """
-                            max-width: 80%;
-                            """
-                        ):
-                            html = render_markdown_html(item["answer"])
-                            message_id += 1
-                            ui.html(html).props(f"id=assistant-msg{message_id}").style(
+                    border: 1px solid #3a3a3a;
+                    border-radius: 8px;
+
+                    padding: 12px;
+                    """
+                    )
+                )
+                with chat_scroll:
+                    for item in chat_history:
+                        with ui.row().classes("w-full justify-end"):
+                            with ui.chat_message(
+                                sent=True,
+                                name="用户🧑",
+                                stamp=f"\U0001f550{datetime.datetime.now().strftime('%H:%M:%S')}",
+                            ).style(
                                 """
-                                width: 100%;
+                                max-width: 80%;
                                 """
+                            ):
+                                ui.markdown(item["question"])
+
+                        with ui.column().classes("w-full items-start"):
+                            with ui.chat_message(
+                                sent=False,
+                                name="🧠历史回复",
+                            ).style(
+                                """
+                                max-width: 80%;
+                                """
+                            ):
+                                html = render_markdown_html(item["answer"])
+                                message_id += 1
+                                ui.html(html).props(
+                                    f"id=assistant-msg{message_id}"
+                                ).style(
+                                    """
+                                    width: 100%;
+                                    """
+                                )
+                                context.client.run_javascript(f"""
+                                if (window.MathJax) {{
+                                    MathJax.typesetPromise();
+                                    const el = document.getElementById("assistant-msg{message_id}");
+                                    MathJax.typesetPromise([el]);
+                                }}
+                                """)
+                            if item["sources"]:
+                                with ui.row().classes("gap-2 mt-2"):
+                                    for source in item["sources"]:
+                                        ui.button(
+                                            source["file_name"],
+                                            icon="description",
+                                            on_click=lambda n=source["file_name"], p=source["path"], h=source["hits"]: (
+                                                show_file_preview(n, p, h)
+                                            ),
+                                        ).props("flat dense")
+
+                # input row
+                with (
+                    ui.row()
+                    .classes("w-full items-center")
+                    .style(
+                        """
+                        padding-top: 4px;
+                        padding-bottom: 28px;
+                        """
+                    )
+                ):
+                    input_box = (
+                        ui.input(placeholder="请输入问题...")
+                        .props("outlined clearable")
+                        .classes("flex-1")
+                    )
+
+                    async def send_message(
+                        message=None,
+                        force_rag=False,
+                        from_confirm=False,
+                        client=None,
+                    ):
+
+                        try:
+                            if client is None:
+                                client = context.client
+
+                            if message is None:
+                                message = (input_box.value or "").strip()
+
+                            if not message:
+                                return
+
+                            input_box.value = ""
+                            send_button.disable()
+                            input_box.disable()
+                            nonlocal debug_panel_shown
+                            debug_panel_shown = True
+                            show_hide_debug_panel()
+                            log(f"Question: {message}")
+
+                            # messages
+                            with chat_scroll:
+                                if not from_confirm:
+                                    # 用户消息：右边
+                                    with ui.row().classes("w-full justify-end"):
+                                        with ui.chat_message(
+                                            sent=True,
+                                            name="用户🧑",
+                                            stamp=f"\U0001f550{datetime.datetime.now().strftime('%H:%M:%S')}",
+                                        ).style(
+                                            """
+                                            max-width: 80%;
+                                            """
+                                        ):
+                                            ui.markdown(message)
+
+                                # 助理消息
+                                with ui.column().classes("w-full items-start"):
+                                    with ui.chat_message(
+                                        sent=False,
+                                        name="\U00002728智能助理",
+                                    ).style(
+                                        """
+                                        max-width: 80%;
+                                        """
+                                    ):
+                                        wait_html = markdown.markdown(
+                                            "\U000023f3正在检索资料，请稍候……",
+                                        )
+                                        nonlocal message_id
+                                        message_id += 1
+                                        assistant_message = (
+                                            ui.html(
+                                                f"""
+                                            <div class="streaming-text loading-text">
+                                                {wait_html}
+                                            </div>
+                                            """
+                                            )
+                                            .props(f"id=assistant-msg{message_id}")
+                                            .style(
+                                                """
+                                            width: 100%;
+                                            """
+                                            )
+                                        )
+                                    sources_container = ui.row().classes("gap-2 mt-0")
+                                    action_container = ui.row().classes("gap-2 mt-1")
+                                    auto_scroll_chat(client)
+
+                            # reset status
+                            debug_panel.content = """
+                            <div class="debug-panel">
+                                waiting for data...
+                            </div>
+                            """
+                            debug_panel.update()
+
+                            # state
+                            partial_text = ""
+                            source_nodes = []
+                            got_answer = False
+                            dct_answer = False
+                            first_token = False
+                            timing = {}
+                            # background stream
+                            queue = Queue()
+
+                            def worker():
+                                try:
+                                    for event in service.stream_answer(
+                                        message, force_rag
+                                    ):
+                                        queue.put(event)
+                                finally:
+                                    queue.put(None)
+
+                            threading.Thread(
+                                target=worker,
+                                daemon=True,
+                            ).start()
+
+                            # consume
+                            accumulated = ""
+                            while True:
+                                event = await asyncio.to_thread(queue.get)
+                                if event is None:
+                                    break
+
+                                # token
+                                if event["type"] == "token":
+                                    got_answer = True
+                                    if not first_token:
+                                        log("Streaming...")
+                                    first_token = True
+                                    if partial_text == "":
+                                        assistant_message.content = ""
+                                    accumulated += event["content"]
+                                    if "\n" in accumulated:
+                                        partial_text += accumulated
+                                        accumulated = ""
+                                        rendered_html = render_markdown_html(
+                                            partial_text
+                                        )
+                                        assistant_message.content = rendered_html
+                                        assistant_message.update()
+                                        # auto scroll
+                                        auto_scroll_chat(client)
+
+                                # sources
+                                elif event["type"] == "sources":
+                                    source_nodes = event["content"]
+
+                                # debug
+                                elif event["type"] == "debug":
+                                    timing = event["content"].get("timing", {})
+                                    debug_panel_shown = False
+                                    show_hide_debug_panel()
+
+                                    debug_html = build_debug_html(event["content"])
+                                    debug_panel.content = debug_html
+                                    debug_panel.update()
+
+                                # status
+                                elif event["type"] == "status":
+                                    dct_answer = event["source"] == "dict"
+                                    got_answer = event["got_answer"]
+                                    if event.get("need_rag_confirm"):
+                                        show_inline_rag_confirm(
+                                            event.get("original_question"),
+                                            action_container,
+                                            client,
+                                        )
+
+                            if accumulated:
+                                partial_text += accumulated
+
+                            log("Answer completed")
+                            log(
+                                f"Query: {timing.get('query_ms', 0)} ms, LLM: {timing.get('llm_ms', 0)} ms, Total: {timing.get('total_ms', 0)} ms"
                             )
-                            context.client.run_javascript(f"""
+                            if not dct_answer:
+                                usage = service.get_token_usage()
+                                src = usage["rewrite"]["source"]
+                                model = usage["rewrite"]["model"]
+                                log(
+                                    f"Rewrite token in: {usage['rewrite']['prompt_tokens']}, out:{usage['rewrite']['completion_tokens']}, from: {model if src == 'llm' else f'{model} [bold red]{src}[/]!!!'}"
+                                )
+                                src = usage["answer"]["source"]
+                                model = usage["answer"]["model"]
+                                log(
+                                    f"Answers token in: {usage['answer']['prompt_tokens']}, out:{usage['answer']['completion_tokens']}, from: {model if src == 'llm' else f'{model} [bold red]{src}[/]!!!'}"
+                                )
+                                log(
+                                    f"Total token usage: {usage['total']['total_tokens']}"
+                                )
+                            print()
+
+                            # fallback
+                            if not got_answer:
+                                partial_text = (
+                                    "对不起，我检索了资料，但还是不知道答案……"
+                                )
+
+                            # references
+                            (
+                                ref_text,
+                                file_map,
+                            ) = build_reference_files(source_nodes)
+
+                            # if ref_text:
+                            #     partial_text += f"\n  \n---  \n##### 参考文件\n{ref_text}"
+
+                            # source buttons
+                            should_show_sources = (
+                                ref_text
+                                and got_answer
+                                and partial_text.strip()
+                                not in [
+                                    "不知道",
+                                    "不知道.",
+                                    "不知道。",
+                                    "我不知道",
+                                    "我不知道.",
+                                    "我不知道。",
+                                    "无法回答",
+                                ]
+                            )
+                            # final update
+
+                            partial_text += f"  \n  \n  `\U0001f550{datetime.datetime.now().strftime('%H:%M:%S')}`"
+                            rendered_html = render_markdown_html(partial_text)
+                            assistant_message.content = rendered_html
+                            assistant_message.update()
+                            client.run_javascript(f"""
                             if (window.MathJax) {{
                                 MathJax.typesetPromise();
                                 const el = document.getElementById("assistant-msg{message_id}");
                                 MathJax.typesetPromise([el]);
                             }}
                             """)
-                        if item["sources"]:
-                            with ui.row().classes("gap-2 mt-2"):
-                                for source in item["sources"]:
-                                    ui.button(
-                                        source["file_name"],
-                                        icon="description",
-                                        on_click=lambda n=source["file_name"], p=source["path"], h=source["hits"]: (
-                                            show_file_preview(n, p, h)
-                                        ),
-                                    ).props("flat dense")
 
-            # input row
-            with (
-                ui.row()
-                .classes("w-full items-center")
-                .style(
-                    """
-                    padding-top: 4px;
-                    padding-bottom: 28px;
-                    """
-                )
-            ):
-                input_box = (
-                    ui.input(placeholder="请输入问题...")
-                    .props("outlined clearable")
-                    .classes("flex-1")
-                )
+                            history_item = {
+                                "question": message,
+                                "answer": partial_text,
+                                "sources": [],
+                            }
 
-                async def send_message(
-                    message=None,
-                    force_rag=False,
-                    from_confirm=False,
-                    client=None,
-                ):
+                            if should_show_sources:
+                                shown_files = set()
+                                with sources_container:
+                                    with ui.row().classes("gap-2 mt-2"):
+                                        for file_name, file_info in file_map.items():
+                                            file_path = file_info["path"]
+                                            hits = file_info["hits"]
+                                            if file_name in shown_files:
+                                                continue
 
-                    try:
-                        if client is None:
-                            client = context.client
+                                            shown_files.add(file_name)
 
-                        if message is None:
-                            message = (input_box.value or "").strip()
+                                            ui.button(
+                                                Path(file_name).stem,
+                                                icon="description",
+                                                on_click=lambda n=Path(file_name).stem, p=file_path, h=hits: (
+                                                    show_file_preview(n, p, h)
+                                                ),
+                                            ).props("flat dense")
+                                            history_item["sources"].append(
+                                                {
+                                                    "file_name": file_name,
+                                                    "path": file_info["path"],
+                                                    "hits": file_info["hits"],
+                                                }
+                                            )
+                            chat_history.append(history_item)
 
-                        if not message:
-                            return
+                        except Exception as e:
+                            partial_text += f"  \n  \n  `📛出现了错误：{str(e)}`！"
+                            partial_text += f"  \n  \n  `\U0001f550{datetime.datetime.now().strftime('%H:%M:%S')}`"
+                            rendered_html = render_markdown_html(partial_text)
+                            assistant_message.content = rendered_html
+                            assistant_message.update()
+                        finally:
+                            auto_scroll_chat(client)
+                            send_button.enable()
+                            input_box.enable()
 
-                        input_box.value = ""
-                        send_button.disable()
-                        input_box.disable()
-                        nonlocal debug_panel_shown
-                        debug_panel_shown = True
-                        show_hide_debug_panel()
-                        log(f"Question: {message}")
+                    # enter submit
+                    input_box.on(
+                        "keydown.enter",
+                        lambda e: send_message(),
+                    )
+                    send_button = ui.button("发送", on_click=send_message)
+                    clear_button = ui.button("清空", on_click=confirm_clear)
+                    debug_button = ui.button("调试面板")
 
-                        # messages
-                        with chat_scroll:
-                            if not from_confirm:
-                                # 用户消息：右边
-                                with ui.row().classes("w-full justify-end"):
-                                    with ui.chat_message(
-                                        sent=True,
-                                        name="用户🧑",
-                                        stamp=f"\U0001f550{datetime.datetime.now().strftime('%H:%M:%S')}",
-                                    ).style(
-                                        """
-                                        max-width: 80%;
-                                        """
-                                    ):
-                                        ui.markdown(message)
-
-                            # 助理消息
-                            with ui.column().classes("w-full items-start"):
-                                with ui.chat_message(
-                                    sent=False,
-                                    name="\U00002728智能助理",
-                                ).style(
-                                    """
-                                    max-width: 80%;
-                                    """
-                                ):
-                                    wait_html = markdown.markdown(
-                                        "\U000023f3正在检索资料，请稍候……",
-                                    )
-                                    nonlocal message_id
-                                    message_id += 1
-                                    assistant_message = (
-                                        ui.html(
-                                            f"""
-                                        <div class="streaming-text loading-text">
-                                            {wait_html}
-                                        </div>
-                                        """
-                                        )
-                                        .props(f"id=assistant-msg{message_id}")
-                                        .style(
-                                            """
-                                        width: 100%;
-                                        """
-                                        )
-                                    )
-                                sources_container = ui.row().classes("gap-2 mt-0")
-                                action_container = ui.row().classes("gap-2 mt-1")
-                                auto_scroll_chat(client)
-
-                        # reset status
-                        debug_panel.content = """
-                        <div class="debug-panel">
-                            waiting for data...
-                        </div>
-                        """
-                        debug_panel.update()
-
-                        # state
-                        partial_text = ""
-                        source_nodes = []
-                        got_answer = False
-                        dct_answer = False
-                        first_token = False
-                        timing = {}
-                        # background stream
-                        queue = Queue()
-
-                        def worker():
-                            try:
-                                for event in service.stream_answer(message, force_rag):
-                                    queue.put(event)
-                            finally:
-                                queue.put(None)
-
-                        threading.Thread(
-                            target=worker,
-                            daemon=True,
-                        ).start()
-
-                        # consume
-                        accumulated = ""
-                        while True:
-                            event = await asyncio.to_thread(queue.get)
-                            if event is None:
-                                break
-
-                            # token
-                            if event["type"] == "token":
-                                got_answer = True
-                                if not first_token:
-                                    log("Streaming...")
-                                first_token = True
-                                if partial_text == "":
-                                    assistant_message.content = ""
-                                accumulated += event["content"]
-                                if "\n" in accumulated:
-                                    partial_text += accumulated
-                                    accumulated = ""
-                                    rendered_html = render_markdown_html(partial_text)
-                                    assistant_message.content = rendered_html
-                                    assistant_message.update()
-                                    # auto scroll
-                                    auto_scroll_chat(client)
-
-                            # sources
-                            elif event["type"] == "sources":
-                                source_nodes = event["content"]
-
-                            # debug
-                            elif event["type"] == "debug":
-                                timing = event["content"].get("timing", {})
-                                debug_panel_shown = False
-                                show_hide_debug_panel()
-
-                                debug_html = build_debug_html(event["content"])
-                                debug_panel.content = debug_html
-                                debug_panel.update()
-
-                            # status
-                            elif event["type"] == "status":
-                                dct_answer = event["source"] == "dict"
-                                got_answer = event["got_answer"]
-                                if event.get("need_rag_confirm"):
-                                    show_inline_rag_confirm(
-                                        event.get("original_question"),
-                                        action_container,
-                                        client,
-                                    )
-
-                        if accumulated:
-                            partial_text += accumulated
-
-                        log("Answer completed")
-                        log(
-                            f"Query: {timing.get('query_ms', 0)} ms, LLM: {timing.get('llm_ms', 0)} ms, Total: {timing.get('total_ms', 0)} ms"
-                        )
-                        if not dct_answer:
-                            usage = service.get_token_usage()
-                            src = usage["rewrite"]["source"]
-                            model = usage["rewrite"]["model"]
-                            log(
-                                f"Rewrite token in: {usage['rewrite']['prompt_tokens']}, out:{usage['rewrite']['completion_tokens']}, from: {model if src == 'llm' else f'{model} [bold red]{src}[/]!!!'}"
-                            )
-                            src = usage["answer"]["source"]
-                            model = usage["answer"]["model"]
-                            log(
-                                f"Answers token in: {usage['answer']['prompt_tokens']}, out:{usage['answer']['completion_tokens']}, from: {model if src == 'llm' else f'{model} [bold red]{src}[/]!!!'}"
-                            )
-                            log(f"Total token usage: {usage['total']['total_tokens']}")
-                        print()
-
-                        # fallback
-                        if not got_answer:
-                            partial_text = "对不起，我检索了资料，但还是不知道答案……"
-
-                        # references
-                        (
-                            ref_text,
-                            file_map,
-                        ) = build_reference_files(source_nodes)
-
-                        # if ref_text:
-                        #     partial_text += f"\n  \n---  \n##### 参考文件\n{ref_text}"
-
-                        # source buttons
-                        should_show_sources = (
-                            ref_text
-                            and got_answer
-                            and partial_text.strip()
-                            not in [
-                                "不知道",
-                                "不知道.",
-                                "不知道。",
-                                "我不知道",
-                                "我不知道.",
-                                "我不知道。",
-                                "无法回答",
-                            ]
-                        )
-                        # final update
-
-                        partial_text += f"  \n  \n  `\U0001f550{datetime.datetime.now().strftime('%H:%M:%S')}`"
-                        rendered_html = render_markdown_html(partial_text)
-                        assistant_message.content = rendered_html
-                        assistant_message.update()
-                        client.run_javascript(f"""
-                        if (window.MathJax) {{
-                            MathJax.typesetPromise();
-                            const el = document.getElementById("assistant-msg{message_id}");
-                            MathJax.typesetPromise([el]);
-                        }}
-                        """)
-
-                        history_item = {
-                            "question": message,
-                            "answer": partial_text,
-                            "sources": [],
-                        }
-
-                        if should_show_sources:
-                            shown_files = set()
-                            with sources_container:
-                                with ui.row().classes("gap-2 mt-2"):
-                                    for file_name, file_info in file_map.items():
-                                        file_path = file_info["path"]
-                                        hits = file_info["hits"]
-                                        if file_name in shown_files:
-                                            continue
-
-                                        shown_files.add(file_name)
-
-                                        ui.button(
-                                            Path(file_name).stem,
-                                            icon="description",
-                                            on_click=lambda n=Path(file_name).stem, p=file_path, h=hits: (
-                                                show_file_preview(n, p, h)
-                                            ),
-                                        ).props("flat dense")
-                                        history_item["sources"].append(
-                                            {
-                                                "file_name": file_name,
-                                                "path": file_info["path"],
-                                                "hits": file_info["hits"],
-                                            }
-                                        )
-                        chat_history.append(history_item)
-
-                    except Exception as e:
-                        partial_text += f"  \n  \n  `📛出现了错误：{str(e)}`！"
-                        partial_text += f"  \n  \n  `\U0001f550{datetime.datetime.now().strftime('%H:%M:%S')}`"
-                        rendered_html = render_markdown_html(partial_text)
-                        assistant_message.content = rendered_html
-                        assistant_message.update()
-                    finally:
-                        auto_scroll_chat(client)
-                        send_button.enable()
-                        input_box.enable()
-
-                # enter submit
-                input_box.on(
-                    "keydown.enter",
-                    lambda e: send_message(),
-                )
-                send_button = ui.button("发送", on_click=send_message)
-                clear_button = ui.button("清空", on_click=confirm_clear)
-                debug_button = ui.button("调试面板")
-
-        # right
-        right_column = ui.column().style(
+            # right
+            right_column = ui.column().style(
+                """
+                width: 30%;
+                height: 100%;
+                overflow: hidden;
+                display: none;
             """
-        width: 30%;
-        height: 100%;
-        overflow: hidden;
-        display: none;
-        """
-        )
-
-        with right_column:
-            with (
-                ui.row()
-                .classes(
-                    "w-full items-center justify-between height: 24px; line-height: 24px;"
-                )
-                .style("height: 24px; line-height: 24px; font-size: 14px; margin: 0;")
-            ):
-                ui.label("调试面板").style(
-                    "height: 24px; line-height: 24px; font-size: 14px; margin: 0;"
-                )
-            # debug
-            debug_panel = ui.html(
-                """
-                <div class="debug-panel">
-                    暂无调试信息
-                </div>
-                """
-            ).classes("w-full")
-
-            debug_panel.style(
-                """
-                width: 100%;
-                border: 1px solid #3a3a3a;
-                border-radius: 8px;
-                padding: 12px;
-                height: 89vh;
-                overflow-y: auto;
-                font-size: 12px;
-                background: #1b1b1b;
-                """
             )
 
-        debug_button.on("click", show_hide_debug_panel)
+            with right_column:
+                # debug
+                debug_panel = ui.html(
+                    """
+                    <div class="debug-panel">
+                        暂无调试信息
+                    </div>
+                    """
+                ).classes("w-full")
+
+                debug_panel.style(
+                    """
+                    width: 100%;
+                    border: 1px solid #3a3a3a;
+                    border-radius: 8px;
+                    padding: 12px;
+                    height: 100%;
+                    overflow-y: auto;
+                    font-size: 12px;
+                    background: #1b1b1b;
+                    """
+                )
+
+            debug_button.on("click", show_hide_debug_panel)
 
 
 # run app
