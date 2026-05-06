@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+from pathlib import Path
 import threading
 from queue import Queue
 import markdown
@@ -154,45 +155,56 @@ def auto_scroll_chat(client):
 def main():
     debug_panel_shown = False
 
-    def continue_rag(question: str):
-        client = context.client
+    def clear_chat():
+        chat_history.clear()
+        chat_scroll.clear()
+        hide_debug_panel()
 
-        asyncio.create_task(
-            send_message(
-                question,
-                force_rag=True,
-                from_confirm=True,
-                client=client,
-            )
-        )
-
-    def show_rag_confirm(question: str):
+    def confirm_clear():
         with ui.dialog().props("persistent") as dialog:
             with ui.card().style(
                 """
-                width: 400px;
+                width: 500px;
                 max-width: 90vw;
                 background: #313131;
                 """
             ):
-                ui.markdown("### 是否继续检索")
-                ui.label("🤔字典查询已完成，需要从知识库中继续获取更多的信息吗？")
+                ui.markdown("### 清空聊天记录")
+                ui.label("确定清空聊天记录吗，目前清空后聊天记录就无法恢复了哦？")
 
                 with ui.row().classes("w-full justify-end gap-2 mt-4"):
+                    ui.button("取消", on_click=dialog.close).props("flat")
                     ui.button(
-                        "否",
-                        on_click=dialog.close,
-                    ).props("flat")
-
-                    ui.button(
-                        "是",
+                        "确定",
                         on_click=lambda: (
+                            clear_chat(),
                             dialog.close(),
-                            continue_rag(question),
                         ),
                     ).props("color=primary")
-
         dialog.open()
+
+    def show_inline_rag_confirm(question, container, client):
+        container.clear()
+
+        with container:
+            ui.label("❓需要继续从资料库检索吗？").classes("text-sm text-gray-400")
+
+            def on_yes():
+                container.clear()
+                asyncio.create_task(
+                    send_message(
+                        question,
+                        force_rag=True,
+                        from_confirm=True,
+                        client=client,
+                    )
+                )
+
+            def on_no():
+                container.clear()
+
+            ui.button("是", on_click=on_yes).props("dense size=sm")
+            ui.button("否", on_click=on_no).props("flat dense size=sm")
 
     def show_file_preview(name, path, hits):
 
@@ -734,6 +746,7 @@ def main():
                                         )
                                     )
                                 sources_container = ui.row().classes("gap-2 mt-0")
+                                action_container = ui.row().classes("gap-2 mt-1")
                                 auto_scroll_chat(client)
 
                         # reset status
@@ -827,7 +840,11 @@ def main():
                                 dct_answer = event["source"] == "dict"
                                 got_answer = event["got_answer"]
                                 if event.get("need_rag_confirm"):
-                                    show_rag_confirm(event.get("original_question"))
+                                    show_inline_rag_confirm(
+                                        event.get("original_question"),
+                                        action_container,
+                                        client,
+                                    )
 
                         if accumulated:
                             partial_text += accumulated
@@ -868,7 +885,6 @@ def main():
                         should_show_sources = (
                             ref_text
                             and got_answer
-                            and partial_text.strip()
                             and partial_text.strip()
                             not in [
                                 "不知道",
@@ -913,9 +929,9 @@ def main():
                                         shown_files.add(file_name)
 
                                         ui.button(
-                                            file_name,
+                                            Path(file_name).stem,
                                             icon="description",
-                                            on_click=lambda n=file_name, p=file_path, h=hits: (
+                                            on_click=lambda n=Path(file_name).stem, p=file_path, h=hits: (
                                                 show_file_preview(n, p, h)
                                             ),
                                         ).props("flat dense")
@@ -944,10 +960,8 @@ def main():
                     "keydown.enter",
                     lambda e: send_message(),
                 )
-                send_button = ui.button(
-                    "发送",
-                    on_click=send_message,
-                )
+                send_button = ui.button("发送", on_click=send_message)
+                clear_button = ui.button("清空", on_click=confirm_clear)
 
         # right
         right_column = ui.column().style(
