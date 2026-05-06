@@ -526,36 +526,97 @@ def main():
     <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     """)
     ui.add_body_html("""
-<script>
-function scrollToBottom() {
-    const area = document.querySelector('.chat-area');
-    if (area) {
-        area.scrollTo({
-            top: area.scrollHeight,
-            behavior: 'smooth'
+    <script>
+    (function () {
+        let scrollBound = false;
+        let observerBound = false;
+
+        function getArea() {
+            return document.querySelector('.chat-area');
+        }
+
+        function getBtn() {
+            return document.querySelector('.scroll-to-bottom-btn');
+        }
+
+        function scrollToBottom() {
+            const area = getArea();
+            if (area) {
+                area.scrollTo({
+                    top: area.scrollHeight,
+                    behavior: 'smooth'
+                });
+            }
+        }
+
+        function checkScroll() {
+            const area = getArea();
+            const btn = getBtn();
+
+            if (!area || !btn) return;
+
+            const isAtBottom =
+                area.scrollHeight - area.scrollTop - area.clientHeight < 20;
+
+            btn.style.display = isAtBottom ? 'none' : 'block';
+        }
+
+        function bindScrollListener() {
+            if (scrollBound) return;
+
+            const area = getArea();
+            if (!area) return;
+
+            area.addEventListener('scroll', checkScroll, { passive: true });
+            scrollBound = true;
+        }
+
+        function observeChatArea() {
+            if (observerBound) return;
+
+            const area = getArea();
+            if (!area) return;
+
+            const observer = new MutationObserver(() => {
+                checkScroll();
+            });
+
+            observer.observe(area, {
+                childList: true,
+                subtree: true
+            });
+
+            observerBound = true;
+        }
+
+        function initWhenReady(retry = 0) {
+            const area = getArea();
+            const btn = getBtn();
+
+            // 组件未挂载，最多重试 ~3秒
+            if ((!area || !btn) && retry < 30) {
+                setTimeout(() => initWhenReady(retry + 1), 100);
+                return;
+            }
+
+            if (!area || !btn) return;
+
+            bindScrollListener();
+            observeChatArea();
+            checkScroll();
+        }
+
+        // 页面加载后启动
+        document.addEventListener('DOMContentLoaded', () => {
+            initWhenReady();
         });
-    }
-}
 
-function checkScroll() {
-    const area = document.querySelector('.chat-area');
-    const btn = document.querySelector('.scroll-to-bottom-btn');
-
-    if (!area || !btn) return;
-
-    const isAtBottom =
-        area.scrollHeight - area.scrollTop - area.clientHeight < 20;
-
-    if (isAtBottom) {
-        btn.style.display = 'none';
-    } else {
-        btn.style.display = 'block';
-    }
-}
-
-setInterval(checkScroll, 300);
-</script>
-""")
+        // 暴露给 Python 调用（保持兼容）
+        window.scrollToBottom = scrollToBottom;
+        window.checkScroll = checkScroll;
+    })();
+    </script>
+    """)
 
     ui.dark_mode(True)
     ui.colors(
