@@ -3,6 +3,7 @@ import datetime
 from pathlib import Path
 import threading
 from queue import Queue
+import traceback
 import markdown
 from nicegui import ui
 from nicegui import app
@@ -1024,6 +1025,8 @@ setInterval(checkScroll, 300);
                     partial_text += f"  \n  \n  `📛出现了错误：{str(e)}`！"
                     partial_text += f"  \n  \n  `\U0001f550{datetime.datetime.now().strftime('%H:%M:%S')}`"
                     rendered_html = render_markdown_html(partial_text)
+                    log(e)
+                    print(traceback.format_exc())
                     assistant_message.content = rendered_html
                     assistant_message.update()
                 finally:

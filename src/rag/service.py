@@ -27,6 +27,23 @@ class RagService:
                     "original_question": question,
                     "source": "dict",
                 }
+
+                total_ms = round(
+                    (time.perf_counter() - total_start) * 1000,
+                    2,
+                )
+                yield {
+                    "type": "debug",
+                    "content": {
+                        "timing": {
+                            "query_ms": 0,
+                            "llm_ms": 0,
+                            "total_ms": total_ms,
+                        },
+                        "retrieval": [],
+                    },
+                }
+
                 return
 
         query_start = time.perf_counter()

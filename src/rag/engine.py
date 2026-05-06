@@ -311,7 +311,7 @@ Windows平台对比Linux平台，用表格展示
 
         except Exception as e:
             log(f"[QueryAnalyzeError] {e}")
-            log(traceback.format_exc())
+            print(traceback.format_exc())
 
             return {
                 "retrieval_query": question,
