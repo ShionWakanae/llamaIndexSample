@@ -395,7 +395,7 @@ def main():
                                 with ui.chat_message(
                                     sent=True,
                                     name="用户🧑",
-                                    stamp=f"\U0001f550{datetime.datetime.now().strftime('%H:%M:%S')}",
+                                    stamp=item["qtime"],
                                 ).style("max-width: 80%;"):
                                     ui.markdown(item["question"])
 
@@ -420,17 +420,23 @@ def main():
                                     MathJax.typesetPromise([el]);
                                 }}
                                 """)
+                            ui.label(item["atime"]).classes(
+                                "text-xs text-gray-400"
+                            ).style("""
+margin-top: -10px;
+margin-bottom: 0px;
+""")
                             if item["sources"]:
                                 with (
                                     ui.row()
-                                    .classes("gap-2 mt-2")
+                                    .classes("gap-0 mt-0 mb-0")
                                     .style("max-width: 80%;")
                                 ):
                                     for source in item["sources"]:
                                         ui.button(
-                                            source["file_name"],
+                                            Path(source["file_name"]).stem,
                                             icon="description",
-                                            on_click=lambda n=source["file_name"], p=source["path"], h=source["hits"]: (
+                                            on_click=lambda n=Path(source["file_name"]).stem, p=source["path"], h=source["hits"]: (
                                                 show_file_preview(n, p, h)
                                             ),
                                         ).props("flat dense")
@@ -479,7 +485,9 @@ def main():
             )
         ):
             input_box = (
-                ui.input(placeholder="请输入问题...")
+                ui.input(
+                    placeholder="请输入简短词汇进行字典查询，或输入完整问题进行知识库查询..."
+                )
                 .props("outlined clearable")
                 .classes("flex-1")
             )
@@ -515,6 +523,7 @@ def main():
                     log(f"Question: {message}")
 
                     # messages
+                    qtime = f"\U0001f550{datetime.datetime.now().strftime('%H:%M:%S')}"
                     with chat_scroll:
                         if not from_confirm:
                             # 用户消息：右边
@@ -522,7 +531,7 @@ def main():
                                 with ui.chat_message(
                                     sent=True,
                                     name="用户🧑",
-                                    stamp=f"\U0001f550{datetime.datetime.now().strftime('%H:%M:%S')}",
+                                    stamp=qtime,
                                 ).style("max-width: 80%;"):
                                     ui.markdown(message)
 
@@ -552,8 +561,16 @@ def main():
                                     """
                                     )
                                 )
-                            sources_container = ui.row().classes("gap-2 mt-0")
-                            action_container = ui.row().classes("gap-2 mt-1")
+                            llm_time = (
+                                ui.label("")
+                                .classes("text-xs text-gray-400")
+                                .style("""
+margin-top: -10px;
+margin-bottom: 0px;
+""")
+                            )
+                            sources_container = ui.row().classes("gap-0 mt-0 mb-0")
+                            action_container = ui.row().classes("gap-0 mt-0 mb-0")
                             auto_scroll_chat(client)
 
                     # reset status
@@ -688,7 +705,7 @@ def main():
                     )
                     # final update
 
-                    partial_text += f"  \n  \n  `\U0001f550{datetime.datetime.now().strftime('%H:%M:%S')}`"
+                    atime = f"🕐{datetime.datetime.now().strftime('%H:%M:%S')}"
                     rendered_html = render_markdown_html(partial_text)
                     assistant_message.content = rendered_html
                     assistant_message.update()
@@ -702,11 +719,13 @@ def main():
 
                     history_item = {
                         "question": message,
+                        "qtime": qtime,
                         "answer": partial_text,
+                        "atime": atime,
                         "confirm": from_confirm,
                         "sources": [],
                     }
-
+                    llm_time.text = f"🕐{datetime.datetime.now().strftime('%H:%M:%S')}"
                     if should_show_sources:
                         shown_files = set()
                         with sources_container:
@@ -739,7 +758,9 @@ def main():
 
                 except Exception as e:
                     partial_text += f"  \n  \n  `📛出现了错误：{str(e)}`！"
-                    partial_text += f"  \n  \n  `\U0001f550{datetime.datetime.now().strftime('%H:%M:%S')}`"
+                    partial_text += (
+                        f"  \n  \n  `🕐{datetime.datetime.now().strftime('%H:%M:%S')}`"
+                    )
                     rendered_html = render_markdown_html(partial_text)
                     log(e)
                     print(traceback.format_exc())
