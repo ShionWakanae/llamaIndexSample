@@ -609,7 +609,7 @@ setInterval(checkScroll, 300);
             """
         )
     ):
-        ui.label("企业知识库问答").style(
+        ui.label("🔍企业知识库").style(
             "height: 20px; line-height: 20px; font-size: 18px; margin: 0;"
         )
 
@@ -786,6 +786,13 @@ setInterval(checkScroll, 300);
 
                     input_box.value = ""
                     send_button.disable()
+                    send_button.props("loading")
+                    send_button.set_text("稍候")
+                    send_button.icon = "hourglass_empty"
+                    clear_button.disable()
+                    clear_button.props("loading")
+                    clear_button.set_text("稍候")
+                    clear_button.icon = "hourglass_empty"
                     input_box.disable()
                     nonlocal debug_panel_shown
                     log(f"Question: {message}")
@@ -1024,6 +1031,13 @@ setInterval(checkScroll, 300);
                 finally:
                     auto_scroll_chat(client)
                     send_button.enable()
+                    send_button.props(remove="loading")
+                    send_button.set_text("发送")
+                    send_button.icon = "send"
+                    clear_button.enable()
+                    clear_button.props(remove="loading")
+                    clear_button.set_text("清空")
+                    clear_button.icon = "cleaning_services"
                     input_box.enable()
 
             # enter submit
@@ -1032,9 +1046,13 @@ setInterval(checkScroll, 300);
                 lambda e: send_message(),
             )
             send_button = ui.button("发送", on_click=send_message)
-            clear_button = ui.button("清空", on_click=confirm_clear)
-            debug_button = ui.button("调试面板")
+            send_button.props('icon="send"')
 
+            clear_button = ui.button("清空", on_click=confirm_clear)
+            clear_button.props('icon="cleaning_services"')
+
+            debug_button = ui.button("调试面板")
+            debug_button.props('icon="developer_mode"')
             debug_button.on("click", show_hide_debug_panel)
 
 
@@ -1042,7 +1060,7 @@ setInterval(checkScroll, 300);
 ui.run(
     host="0.0.0.0",
     port=7860,
-    title="企业知识库问答",
+    title="企业知识库",
     language="zh-CN",
     storage_secret=os.getenv("STORAGE_SECRET"),
     reload=False,
