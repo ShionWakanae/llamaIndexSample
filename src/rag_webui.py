@@ -149,14 +149,14 @@ def main():
                 ui.label("确定清空聊天记录吗，目前清空后聊天记录就无法恢复了哦？")
 
                 with ui.row().classes("w-full justify-end gap-2 mt-4"):
-                    ui.button("取消", on_click=dialog.close).props("flat")
+                    ui.button("取消", on_click=dialog.close).props("flat icon='close'")
                     ui.button(
                         "确定",
                         on_click=lambda: (
                             clear_chat(),
                             dialog.close(),
                         ),
-                    ).props("color=primary")
+                    ).props("color=primary icon='check'")
         dialog.open()
 
     def show_inline_rag_confirm(question, container, client):
@@ -179,8 +179,8 @@ def main():
             def on_no():
                 container.clear()
 
-            ui.button("是", on_click=on_yes).props("dense size=sm")
-            ui.button("否", on_click=on_no).props("flat dense size=sm")
+            ui.button("是", on_click=on_yes).props("dense size=sm icon='check'")
+            ui.button("否", on_click=on_no).props("flat dense size=sm icon='close'")
 
     def show_file_preview(name, path, hits):
 
