@@ -163,12 +163,12 @@ def main():
 
     def show_inline_rag_confirm(question, container, client):
         container.clear()
-
         with container:
             ui.label("❓需要继续从资料库检索吗？").classes("text-sm text-gray-400")
 
             def on_yes():
                 container.clear()
+                container.delete()
                 asyncio.create_task(
                     send_message(
                         question,
@@ -180,6 +180,7 @@ def main():
 
             def on_no():
                 container.clear()
+                container.delete()
 
             ui.button("是", on_click=on_yes).props("dense size=sm icon='check'")
             ui.button("否", on_click=on_no).props("flat dense size=sm icon='close'")
@@ -399,7 +400,7 @@ def main():
                                 ).style("max-width: 80%;"):
                                     ui.markdown(item["question"])
 
-                        with ui.column().classes("w-full items-start"):
+                        with ui.column().classes("w-full items-start mt-0 mb-0"):
                             with ui.chat_message(
                                 sent=False,
                                 name="🧠历史回复",
@@ -420,12 +421,6 @@ def main():
                                     MathJax.typesetPromise([el]);
                                 }}
                                 """)
-                            ui.label(item["atime"]).classes(
-                                "text-xs text-gray-400"
-                            ).style("""
-margin-top: -10px;
-margin-bottom: 0px;
-""")
                             if item["sources"]:
                                 with (
                                     ui.row()
@@ -486,7 +481,7 @@ margin-bottom: 0px;
         ):
             input_box = (
                 ui.input(
-                    placeholder="请输入简短词汇进行字典查询，或输入完整问题进行知识库查询..."
+                    placeholder="请输入简短词汇进行字典查询，或输入完整问题进行知识库检索..."
                 )
                 .props("outlined clearable")
                 .classes("flex-1")
@@ -536,11 +531,13 @@ margin-bottom: 0px;
                                     ui.markdown(message)
 
                         # 助理消息
-                        with ui.column().classes("w-full items-start"):
-                            with ui.chat_message(
+                        with ui.column().classes("w-full items-start mt-0 mb-0"):
+                            llm_msg = ui.chat_message(
                                 sent=False,
                                 name="\U00002728智能助理",
-                            ).style("max-width: 80%;"):
+                            ).style("max-width: 80%;")
+
+                            with llm_msg:
                                 wait_html = markdown.markdown(
                                     "\U000023f3正在检索资料，请稍候……",
                                 )
@@ -561,14 +558,7 @@ margin-bottom: 0px;
                                     """
                                     )
                                 )
-                            llm_time = (
-                                ui.label("")
-                                .classes("text-xs text-gray-400")
-                                .style("""
-margin-top: -10px;
-margin-bottom: 0px;
-""")
-                            )
+
                             sources_container = ui.row().classes("gap-0 mt-0 mb-0")
                             action_container = ui.row().classes("gap-0 mt-0 mb-0")
                             auto_scroll_chat(client)
@@ -706,6 +696,11 @@ margin-bottom: 0px;
                     # final update
 
                     atime = f"🕐{datetime.datetime.now().strftime('%H:%M:%S')}"
+                    partial_text += f"""
+                        <div style="text-align:right; font-size:12px; color:#888888 !important;">
+                        {atime}
+                        </div>
+                    """
                     rendered_html = render_markdown_html(partial_text)
                     assistant_message.content = rendered_html
                     assistant_message.update()
@@ -725,7 +720,6 @@ margin-bottom: 0px;
                         "confirm": from_confirm,
                         "sources": [],
                     }
-                    llm_time.text = f"🕐{datetime.datetime.now().strftime('%H:%M:%S')}"
                     if should_show_sources:
                         shown_files = set()
                         with sources_container:
@@ -754,6 +748,8 @@ margin-bottom: 0px;
                                             "hits": file_info["hits"],
                                         }
                                     )
+                    else:
+                        sources_container.delete()
                     chat_history.append(history_item)
 
                 except Exception as e:
