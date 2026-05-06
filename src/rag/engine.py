@@ -383,7 +383,7 @@ class RagEngine:
 2. 如果上下文没有明确答案，直接说“不知道”。
 3. 不要编造事实。
 4. 回答尽量准确、简洁。
-5. 直接回答内容，禁止说`根据XXX`。
+5. 直接回答内容，禁止说出“根据企业资料”。
 6. 尽量用列表的方式输出并列的内容。
 7. 如果文档存在歧义，指出歧义。
 8. 如果发现上下文有语义被截断的可能，提示用户`参考并以原始文档为准！`。
@@ -506,12 +506,7 @@ class RagEngine:
 
         for i, node in enumerate(nodes_selected):
             text = node.node.text.strip()
-            context_parts.append(
-                f"""
-[Chunk {i + 1}]
-{text}
-"""
-            )
+            context_parts.append(text)
 
         context = "\n\n".join(context_parts)
 

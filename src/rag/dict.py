@@ -141,7 +141,7 @@ class DictEngine:
         lowered = text.lower()
         matches = []
 
-        # 找所有命中
+        # 找所有命中（substring）
         for key, entries in self.dict_map.items():
             start = lowered.find(key)
             if start != -1:
@@ -152,21 +152,31 @@ class DictEngine:
 
         # 按长度排序（长词优先）
         matches.sort(key=lambda x: len(x[0]), reverse=True)
+
         selected = []
         occupied = [False] * len(lowered)
 
-        # 覆盖过滤
+        # 覆盖过滤（避免短词干扰）
         for key, start, end, entries in matches:
             if any(occupied[start:end]):
                 continue
 
-            selected.append(entries)
+            selected.append((key, start, end, entries))
+
             for i in range(start, end):
                 occupied[i] = True
 
+        # 覆盖率判断（核心）
+        covered_len = sum(end - start for _, start, end, _ in selected)
+        coverage = covered_len / len(lowered)
+
+        # 阈值可调（建议 0.25 ~ 0.4）
+        if coverage < 0.5:
+            return None
+
         # flatten
         hits = []
-        for entries in selected:
+        for _, _, _, entries in selected:
             hits.extend(entries)
 
         return {
@@ -178,22 +188,22 @@ class DictEngine:
         if not text:
             return ""
         text = text.replace('""', '"')
-        # 1️⃣ 去掉外层双引号（只去一层）
+        # 去掉外层双引号（只去一层）
         if text.startswith('"') and text.endswith('"'):
             text = text[1:-1]
 
-        # 2️⃣ 去掉 mdx 的 entry:// 链接，只保留显示文本
+        # 去掉 mdx 的 entry:// 链接，只保留显示文本
         # <a href="entry://CFD">CFD</a> → CFD
         text = re.sub(r'<a\s+href="entry://[^"]+">([^<]+)</a>', r"\1", text)
 
-        # 3️⃣ ■ 转换为换行 + 列表
+        # ■ 转换为换行 + 列表
         # 避免第一行前面多一个空行
         text = text.replace("■", "\n- ")
 
-        # 4️⃣ <br> → 换行（你之前已经有）
+        # <br> → 换行（你之前已经有）
         text = text.replace("<br>", "\n")
 
-        # 5️⃣ 清理多余空白
+        # 清理多余空白
         text = re.sub(r"\n+", "\n", text).strip()
 
         return text
@@ -202,13 +212,12 @@ class DictEngine:
         if not entries:
             return ""
 
-        # 1️⃣ 按 term 分组（保持顺序）
+        # 按 term 分组（保持顺序）
         term_groups = {}
         term_order = []
 
         for entry in entries:
             term = entry["term"]
-
             if term not in term_groups:
                 term_groups[term] = []
                 term_order.append(term)
@@ -217,32 +226,27 @@ class DictEngine:
 
         parts = []
 
-        # 2️⃣ 遍历每个 term
+        # 遍历每个 term
         for term in term_order:
             group = term_groups[term]
-
             parts.append(f"## **{term}**")
 
-            # 3️⃣ 多释义（多个 entry）
+            # 多释义（多个 entry）
             for idx, entry in enumerate(group, start=1):
                 defs = entry.get("definitions", [])
-
                 if len(group) > 1:
                     # 第一列作为主释义
                     main_def = defs[0] if defs else ""
                     main_def = self.clean_definition(main_def)
-
                     parts.append(f"#### {idx}. {main_def}")
                     rest_defs = defs[1:]
                 else:
                     rest_defs = defs
 
-                # 4️⃣ 输出 definitions
+                # 输出 definitions
                 for d in rest_defs:
                     cleaned = self.clean_definition(d)
-
                     lines = cleaned.split("\n")
-
                     for i, line in enumerate(lines):
                         if i == 0:
                             parts.append(f"- {line}")
