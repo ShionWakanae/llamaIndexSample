@@ -69,11 +69,8 @@ def build_highlighted_markdown(content, hits):
 
     lines = content.splitlines()
 
-    #
     # merge intervals
-    #
     normalized_hits = []
-
     for start, end in sorted(hits):
         if end <= start:
             continue
@@ -82,7 +79,7 @@ def build_highlighted_markdown(content, hits):
             normalized_hits.append([start, end])
             continue
 
-        last_start, last_end = normalized_hits[-1]
+        _, last_end = normalized_hits[-1]
 
         if start <= last_end:
             normalized_hits[-1][1] = max(
@@ -92,28 +89,20 @@ def build_highlighted_markdown(content, hits):
         else:
             normalized_hits.append([start, end])
 
-    #
     # highlighted line set
-    #
     highlighted = set()
 
     for start, end in normalized_hits:
         for i in range(start, end):
             highlighted.add(i)
 
-    #
     # rebuild markdown
-    #
     output = []
 
     for idx, line in enumerate(lines):
-        #
         # highlight line
-        #
         if idx in highlighted:
-            #
             # avoid empty line highlight issue
-            #
             if line.strip():
                 if line.lstrip().startswith("|"):
                     output.append(line)
@@ -123,16 +112,11 @@ def build_highlighted_markdown(content, hits):
             else:
                 output.append(line)
 
-        #
         # normal line
-        #
         else:
             output.append(line)
 
     return "\n".join(output)
-
-
-chat_history = []
 
 
 def auto_scroll_chat(client):
@@ -153,12 +137,15 @@ def auto_scroll_chat(client):
 
 @ui.page("/")
 def main():
+    chat_history = app.storage.user.setdefault("chat_history", [])
     debug_panel_shown = False
 
     def clear_chat():
         chat_history.clear()
         chat_scroll.clear()
-        hide_debug_panel()
+        nonlocal debug_panel_shown
+        debug_panel_shown = True
+        show_hide_debug_panel()
 
     def confirm_clear():
         with ui.dialog().props("persistent") as dialog:
@@ -559,17 +546,35 @@ def main():
         dark="#111111",
     )
 
-    def hide_debug_panel():
+    def show_hide_debug_panel():
         nonlocal debug_panel_shown
-        right_column.style(
-            """
-            width: 30%;
-            height: 100%;
-            overflow: hidden;
-            display: none;
-            """
-        )
-        debug_panel_shown = False
+        debug_panel_shown = not debug_panel_shown
+        if debug_panel_shown:
+            right_column.style(
+                """
+                width: 30%;
+                height: 100%;
+                overflow: hidden;
+                display: block;
+                """
+            )
+
+            left_column.style(
+                """
+                flex: 1;
+                height: 100%;
+                overflow: hidden;
+                """
+            )
+        else:
+            right_column.style(
+                """
+                width: 30%;
+                height: 100%;
+                overflow: hidden;
+                display: none;
+                """
+            )
 
     with (
         ui.row()
@@ -588,13 +593,15 @@ def main():
         # left
         left_column = ui.column().style(
             """
-        flex: 1;
-        height: 100%;
-        overflow: hidden;
-        """
+            flex: 1;
+            height: 100%;
+            overflow: hidden;
+            """
         )
         with left_column:
-            ui.markdown("### 企业知识库问答")
+            ui.label("企业知识库问答").style(
+                "height: 24px; line-height: 24px; font-size: 14px; margin: 0;"
+            )
             # chat area
             chat_scroll = (
                 ui.column()
@@ -697,6 +704,9 @@ def main():
                         input_box.value = ""
                         send_button.disable()
                         input_box.disable()
+                        nonlocal debug_panel_shown
+                        debug_panel_shown = True
+                        show_hide_debug_panel()
                         log(f"Question: {message}")
 
                         # messages
@@ -811,25 +821,8 @@ def main():
                             # debug
                             elif event["type"] == "debug":
                                 timing = event["content"].get("timing", {})
-                                nonlocal debug_panel_shown
-                                if not debug_panel_shown:
-                                    right_column.style(
-                                        """
-                                        width: 30%;
-                                        height: 100%;
-                                        overflow: hidden;
-                                        display: block;
-                                        """
-                                    )
-
-                                    left_column.style(
-                                        """
-                                        width: 70%;
-                                        height: 100%;
-                                        overflow: hidden;
-                                        """
-                                    )
-                                    debug_panel_shown = True
+                                debug_panel_shown = False
+                                show_hide_debug_panel()
 
                                 debug_html = build_debug_html(event["content"])
                                 debug_panel.content = debug_html
@@ -962,6 +955,7 @@ def main():
                 )
                 send_button = ui.button("发送", on_click=send_message)
                 clear_button = ui.button("清空", on_click=confirm_clear)
+                debug_button = ui.button("调试面板")
 
         # right
         right_column = ui.column().style(
@@ -976,19 +970,14 @@ def main():
         with right_column:
             with (
                 ui.row()
-                .classes("w-full items-center justify-between")
-                .style(
-                    """
-        height: 76px;
-        min-height: 76px;
-        """
+                .classes(
+                    "w-full items-center justify-between height: 24px; line-height: 24px;"
                 )
+                .style("height: 24px; line-height: 24px; font-size: 14px; margin: 0;")
             ):
-                ui.markdown("### 调试信息")
-                ui.button(
-                    icon="close",
-                    on_click=hide_debug_panel,
-                ).props("flat round dense")
+                ui.label("调试面板").style(
+                    "height: 24px; line-height: 24px; font-size: 14px; margin: 0;"
+                )
             # debug
             debug_panel = ui.html(
                 """
@@ -1011,11 +1000,15 @@ def main():
                 """
             )
 
+        debug_button.on("click", show_hide_debug_panel)
+
 
 # run app
 ui.run(
-    host="127.0.0.1",
+    host="0.0.0.0",
     port=7860,
     title="企业知识库问答",
+    language="zh-CN",
+    storage_secret=os.getenv("STORAGE_SECRET"),
     reload=False,
 )
