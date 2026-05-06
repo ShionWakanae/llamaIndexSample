@@ -119,6 +119,8 @@ Example command:
 
 Copy `.env_sample` to `.env`, then update the API endpoint, API key, and model configurations (local or remote). The remaining parameters can be left unchanged initially and adjusted later as needed. An example configuration is shown below:
 ``` ini
+STORAGE_SECRET=xxxxxx                       # A random string for storage secret
+
 LLM_API_BASE=https://api.openai.com/v1      # OpenAI or OpenAI-compatible API endpoint (local or remote)
 LLM_API_KEY=sk-xxxxx                        # API key
 LLM_MODEL=gpt-4.1-mini                      # Model name

@@ -93,6 +93,8 @@ Python .\MarkItDownSample.py "Input dir" "Output dir"
 
 将`.env_sample`拷贝成`.env`，并修改其中的API地址密钥，各种模型配置（本地或在线），其它参数可保留原样，后根据实际情况修改，配置样例如下：
 ``` ini
+STORAGE_SECRET=xxxxxx                       #输入任意的固定字符串
+
 LLM_API_BASE=https://api.openai.com/v1      #本地或在线的OpenAI或兼容API地址
 LLM_API_KEY=sk-xxxxx                        #密钥
 LLM_MODEL=gpt-4.1-mini                      #模型名称
