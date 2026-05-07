@@ -144,9 +144,12 @@ class DictEngine:
         # 找所有命中（substring）
         for key, entries in self.dict_map.items():
             # 英文术语：严格 token 匹配
-            if re.fullmatch(r"[a-zA-Z0-9_]+", key):
-                pattern = rf"(?<![a-zA-Z0-9]){re.escape(key)}(?![a-zA-Z0-9])"
-
+            if re.fullmatch(r"[a-zA-Z0-9_-]+", key):
+                # 允许短横线可有可无
+                escaped = re.escape(key)
+                # 把 \- 替换成 -?
+                escaped = escaped.replace(r"\-", "-?")
+                pattern = rf"(?<![a-zA-Z0-9]){escaped}(?![a-zA-Z0-9])"
                 for m in re.finditer(pattern, lowered):
                     matches.append((key, m.start(), m.end(), entries))
 
