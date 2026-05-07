@@ -143,9 +143,18 @@ class DictEngine:
 
         # 找所有命中（substring）
         for key, entries in self.dict_map.items():
-            start = lowered.find(key)
-            if start != -1:
-                matches.append((key, start, start + len(key), entries))
+            # 英文术语：严格 token 匹配
+            if re.fullmatch(r"[a-zA-Z0-9_]+", key):
+                pattern = rf"(?<![a-zA-Z0-9]){re.escape(key)}(?![a-zA-Z0-9])"
+
+                for m in re.finditer(pattern, lowered):
+                    matches.append((key, m.start(), m.end(), entries))
+
+            # 中文术语：substring
+            else:
+                start = lowered.find(key)
+                if start != -1:
+                    matches.append((key, start, start + len(key), entries))
 
         if not matches:
             return None
