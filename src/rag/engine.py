@@ -7,12 +7,6 @@ import warnings
 from rich import print
 from dotenv import load_dotenv
 from transformers.utils import logging
-
-from llama_index.core import (
-    Settings,
-    StorageContext,
-    load_index_from_storage,
-)
 from llama_index.core.base.llms.types import (
     CompletionResponse,
 )
@@ -22,6 +16,10 @@ from llama_index.postprocessor.flag_embedding_reranker import FlagEmbeddingReran
 from llama_index.core.retrievers import QueryFusionRetriever
 from llama_index.retrievers.bm25 import BM25Retriever
 from llama_index.core.schema import TextNode
+import chromadb
+from llama_index.core import Settings as lli_Settings
+from llama_index.vector_stores.chroma import ChromaVectorStore
+from llama_index.core import VectorStoreIndex
 
 warnings.filterwarnings("ignore", message="pkg_resources is deprecated as an API")
 import jieba  # noqa: E402
@@ -365,7 +363,7 @@ class RagEngine:
         )
 
     def _init_models(self):
-        Settings.llm = OpenAILike(
+        lli_Settings.llm = OpenAILike(
             api_base=os.getenv("LLM_API_BASE"),
             api_key=os.getenv("LLM_API_KEY"),
             model=os.getenv("LLM_MODEL"),
@@ -390,17 +388,43 @@ class RagEngine:
 """,
         )
 
-        Settings.embed_model = HuggingFaceEmbedding(
+        lli_Settings.embed_model = HuggingFaceEmbedding(
             model_name=os.getenv("EMBEDDING_MODEL"),
+            device="cuda",
+            embed_batch_size=32,
         )
 
     def _build_pipeline(self):
 
         log("[RAG] Loading storage...")
-        storage_context = StorageContext.from_defaults(persist_dir="./storage")
-        index = load_index_from_storage(storage_context)
-        docstore = index.storage_context.docstore
-        all_nodes = [n for n in docstore.docs.values() if isinstance(n, TextNode)]
+        # 连接已有 Chroma 数据
+        # print("chroma path:", os.path.abspath("./storage/chroma_db"))
+        chroma_client = chromadb.PersistentClient(path="./storage/chroma_db")
+
+        # 关键：要用同一个 collection 名
+        chroma_collection = chroma_client.get_or_create_collection("docs")
+
+        vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
+
+        # 直接从 vector store 构建 index
+        index = VectorStoreIndex.from_vector_store(
+            vector_store,
+            embed_model=lli_Settings.embed_model,
+        )
+
+        collection_data = chroma_collection.get(include=["documents", "metadatas"])
+
+        all_nodes = []
+        for text, meta in zip(
+            collection_data["documents"],
+            collection_data["metadatas"],
+        ):
+            all_nodes.append(
+                TextNode(
+                    text=text,
+                    metadata=meta or {},
+                )
+            )
         log(f"[RAG] Loaded nodes: {len(all_nodes)}")
 
         vector_retriever = index.as_retriever(
@@ -552,7 +576,7 @@ class RagEngine:
 
         # final generate
         log("Answer starting")
-        stream = stream_with_usage(Settings.llm, final_prompt, self.usage, self)
+        stream = stream_with_usage(lli_Settings.llm, final_prompt, self.usage, self)
         return {
             "question_type": "RAG",
             "stream": stream,

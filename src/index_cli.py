@@ -1,14 +1,16 @@
 import datetime
 from rich import print
-from llama_index.core import Settings, VectorStoreIndex
+from llama_index.core import VectorStoreIndex
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 import os
 from dotenv import load_dotenv
 import argparse
 from collections import Counter, defaultdict
-from indexing.builder import (
-    IndexBuilder,
-)
+from indexing.builder import IndexBuilder
+from llama_index.core import Settings as lli_Settings
+import chromadb
+from llama_index.vector_stores.chroma import ChromaVectorStore
+from llama_index.core import StorageContext
 
 
 def log(msg):
@@ -116,16 +118,30 @@ if __name__ == "__main__":
     log("Starting...")
     load_dotenv()
 
-    # set the embed model
-    Settings.embed_model = HuggingFaceEmbedding(
+    lli_Settings.embed_model = HuggingFaceEmbedding(
         model_name=os.getenv("EMBEDDING_MODEL"),
         device="cuda",
         embed_batch_size=32,
     )
+    # print("chroma path:", os.path.abspath("./storage/chroma_db"))
+    # 初始化 Chroma（持久化目录）
+    chroma_client = chromadb.PersistentClient(path="./storage/chroma_db")
+    # collection（类似表）
+    chroma_collection = chroma_client.get_or_create_collection(
+        "docs", metadata={"hnsw:space": "cosine"}
+    )
+    # 包装成 LlamaIndex 的 vector store
+    vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
+    # 替换 storage_context
+    storage_context = StorageContext.from_defaults(vector_store=vector_store)
 
     log(f"Reading from: {doc_path}")
     builder = IndexBuilder()
     final_nodes = builder.build_nodes(doc_path, debug_mode)
+    for node in final_nodes:
+        meta = node.metadata
+        if "merged_headers" in meta and isinstance(meta["merged_headers"], list):
+            meta["merged_headers"] = " > ".join(meta["merged_headers"])
 
     # debug part
     if debug_mode:
@@ -135,10 +151,12 @@ if __name__ == "__main__":
     log("Indexing...")
     index = VectorStoreIndex(
         nodes=final_nodes,
+        storage_context=storage_context,
         show_progress=True,
+        embed_model=lli_Settings.embed_model,
     )
 
     log("Persisting...")
-    index.storage_context.persist()
+    print("count:", chroma_collection.count())
 
     log("All done ✅")
